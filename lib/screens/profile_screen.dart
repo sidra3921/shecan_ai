@@ -1,6 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
 import 'settings_screen.dart';
+import 'user_type_screen.dart';
+
+Future<void> _logout(BuildContext context) async {
+  await FirebaseAuth.instance.signOut();
+  if (!context.mounted) {
+    return;
+  }
+
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (context) => const UserTypeScreen()),
+    (route) => false,
+  );
+}
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -112,7 +126,7 @@ class ProfileScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () => _logout(context),
                       icon: const Icon(Icons.logout),
                       label: const Text('Logout'),
                       style: OutlinedButton.styleFrom(

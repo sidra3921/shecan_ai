@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
 import 'analytics_screen.dart';
 import 'project_management_screen.dart';
+import 'user_type_screen.dart';
+
+Future<void> _logout(BuildContext context) async {
+  await FirebaseAuth.instance.signOut();
+  if (!context.mounted) {
+    return;
+  }
+
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (context) => const UserTypeScreen()),
+    (route) => false,
+  );
+}
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -332,7 +346,11 @@ class DashboardScreen extends StatelessWidget {
           ),
           const Divider(),
           _DrawerItem(icon: Icons.settings, title: 'Settings', onTap: () {}),
-          _DrawerItem(icon: Icons.logout, title: 'Logout', onTap: () {}),
+          _DrawerItem(
+            icon: Icons.logout,
+            title: 'Logout',
+            onTap: () => _logout(context),
+          ),
         ],
       ),
     );

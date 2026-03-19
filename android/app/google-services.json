@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "503506749523",
+    "project_id": "shecan-ai",
+    "storage_bucket": "shecan-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:503506749523:android:713e333cc5edd8beda1ea6",
+        "android_client_info": {
+          "package_name": "com.example.shecan_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAWp8VFJChcOp8d2HpJc29KzTAS8nQMGOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

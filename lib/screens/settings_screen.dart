@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
+import 'user_type_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,6 +14,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _emailNotifications = true;
   bool _pushNotifications = true;
   bool _smsNotifications = false;
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const UserTypeScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: _logout,
               icon: const Icon(Icons.logout),
               label: const Text('Logout'),
               style: OutlinedButton.styleFrom(

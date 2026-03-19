@@ -79,7 +79,18 @@ dependencies:
    flutter pub get
    ```
 
-3. **Run the app**
+3. **Configure Firebase (required for Sign In / Sign Up)**
+   ```bash
+   dart pub global activate flutterfire_cli
+   flutterfire configure
+   ```
+   This command links the app to your Firebase project and creates platform config files.
+
+4. **Enable Email/Password auth in Firebase Console**
+   - Open Firebase Console → Authentication → Sign-in method
+   - Enable `Email/Password`
+
+5. **Run the app**
    ```bash
    # For Android
    flutter run

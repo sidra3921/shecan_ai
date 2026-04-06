@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../models/project_model.dart';
 
 class PostProjectScreen extends StatefulWidget {
   const PostProjectScreen({super.key});
@@ -13,6 +16,84 @@ class _PostProjectScreenState extends State<PostProjectScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _budgetController = TextEditingController();
+  final _selectedSkills = <String>[];
+  DateTime _selectedDeadline = DateTime.now().add(const Duration(days: 30));
+  bool _isLoading = false;
+
+  final List<String> _availableSkills = [
+    'Flutter',
+    'Dart',
+    'Firebase',
+    'UI/UX Design',
+    'Mobile Development',
+    'Web Development',
+    'Backend',
+    'Database',
+    'API Integration',
+    'Testing',
+  ];
+
+  Future<void> _postProject() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_selectedSkills.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one skill')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = AuthService();
+      final firestoreService = FirestoreService();
+      final userId = authService.currentUserId!;
+
+      final project = ProjectModel(
+        id: '', // Firestore will generate
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        budget: double.parse(_budgetController.text.trim()),
+        deadline: _selectedDeadline,
+        clientId: userId,
+        skills: _selectedSkills,
+        status: 'pending',
+      );
+
+      await firestoreService.createProject(project);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Project posted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to post project: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -181,19 +262,21 @@ class _PostProjectScreenState extends State<PostProjectScreen> {
                   ),
                   const SizedBox(height: 30),
                   // Post Button
-                  ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Project posted successfully!'),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: const Text('Post Project'),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _postProject,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text('Post Project'),
+                    ),
                   ),
                 ],
               ),

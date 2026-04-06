@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
+import '../services/auth_service.dart';
 import 'complete_profile_screen.dart';
 import 'main_navigation_screen.dart';
 
@@ -31,6 +32,7 @@ class _SignInScreenState extends State<SignInScreen>
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final isSignIn = _tabController.index == 0;
+    final authService = AuthService();
 
     setState(() {
       _isLoading = true;
@@ -38,14 +40,17 @@ class _SignInScreenState extends State<SignInScreen>
 
     try {
       if (isSignIn) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
+        await authService.signInWithEmail(
           email: email,
           password: password,
         );
       } else {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        // Create account with user document in Firestore
+        await authService.signUpWithEmail(
           email: email,
           password: password,
+          displayName: email.split('@')[0], // Temporary, will be updated in profile
+          userType: widget.userType,
         );
       }
 
@@ -61,22 +66,15 @@ class _SignInScreenState extends State<SignInScreen>
               : const CompleteProfileScreen(),
         ),
       );
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_authErrorMessage(e))));
-    } catch (_) {
+    } catch (e) {
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Something went wrong. Please try again.'),
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {

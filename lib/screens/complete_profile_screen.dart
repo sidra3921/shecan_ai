@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../constants/app_colors.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 import 'main_navigation_screen.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
@@ -17,6 +20,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   final _nameController = TextEditingController();
   final _titleController = TextEditingController();
   final _bioController = TextEditingController();
+  bool _isLoading = false;
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -26,6 +30,74 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       setState(() {
         _profileImage = File(pickedFile.path);
       });
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = AuthService();
+      final firestoreService = FirestoreService();
+      final storageService = StorageService();
+      final userId = authService.currentUserId!;
+
+      // Upload profile photo if selected
+      String photoURL = '';
+      if (_profileImage != null) {
+        photoURL = await storageService.uploadProfilePhoto(userId, _profileImage!);
+      }
+
+      // Get current user data
+      final currentUser = await firestoreService.getUser(userId);
+      
+      if (currentUser != null) {
+        // Update user profile in Firestore
+        final updatedUser = currentUser.copyWith(
+          displayName: _nameController.text.trim(),
+          bio: _bioController.text.trim(),
+          photoURL: photoURL.isNotEmpty ? photoURL : currentUser.photoURL,
+        );
+        
+        await firestoreService.saveUser(updatedUser);
+
+        // Update Firebase Auth profile
+        await authService.updateUserProfile(
+          displayName: _nameController.text.trim(),
+          photoURL: photoURL.isNotEmpty ? photoURL : null,
+        );
+      }
+
+      if (!mounted) return;
+
+      // Navigate to main screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainNavigationScreen(),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save profile: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -233,33 +305,34 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MainNavigationScreen(),
-                          ),
-                          (route) => false,
-                        );
-                      }
-                    },
-                    child: const Text('Continue'),
+                    onPressed: _isLoading ? null : _saveProfile,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('Continue'),
                   ),
                 ),
                 const SizedBox(height: 16),
                 // Skip for now
                 Center(
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MainNavigationScreen(),
-                        ),
-                        (route) => false,
-                      );
-                    },
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MainNavigationScreen(),
+                              ),
+                              (route) => false,
+                            );
+                          },
                     child: const Text(
                       'Skip for now',
                       style: TextStyle(

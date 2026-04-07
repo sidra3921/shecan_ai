@@ -1,42 +1,136 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
+import '../services/firestore_service.dart';
 
 class MessagesScreen extends StatelessWidget {
   const MessagesScreen({super.key});
 
+  String _getChatId(String userId1, String userId2) {
+    final users = [userId1, userId2]..sort();
+    return '${users[0]}_${users[1]}';
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final diff = now.difference(timestamp);
+    
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    
+    if (currentUser == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: const Text('Messages')),
+        body: const Center(child: Text('Please sign in to view messages')),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Messages')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _MessageCard(
-            name: 'Ayesha Khan',
-            message: 'Hi! I wanted to discuss the logo design project.',
-            time: '2 min ago',
-            unread: true,
-          ),
-          _MessageCard(
-            name: 'Fatima Ali',
-            message: 'Thank you for the great work!',
-            time: '1 hour ago',
-            unread: false,
-          ),
-          _MessageCard(
-            name: 'Sara Ahmed',
-            message: 'When can we start the new project?',
-            time: '3 hours ago',
-            unread: true,
-          ),
-          _MessageCard(
-            name: 'Zainab Malik',
-            message: 'The payment has been processed.',
-            time: '1 day ago',
-            unread: false,
-          ),
-        ],
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: FirestoreService().streamUserChats(currentUser.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Trigger rebuild
+                      (context as Element).markNeedsBuild();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final chats = snapshot.data ?? [];
+
+          if (chats.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble_outline, 
+                    size: 64, 
+                    color: AppColors.textSecondary.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No messages yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Start a conversation with a mentor or client',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final chat = chats[index];
+              final otherUserId = chat['otherUserId'] as String;
+              final lastMessage = chat['lastMessage'] as String;
+              final timestamp = (chat['timestamp'] as DateTime);
+              final unreadCount = (chat['unreadCount'] as int?) ?? 0;
+              final otherUserName = chat['otherUserName'] as String? ?? 'User';
+              final otherUserPhoto = chat['otherUserPhoto'] as String?;
+
+              return _MessageCard(
+                name: otherUserName,
+                message: lastMessage,
+                time: _formatTimestamp(timestamp),
+                unread: unreadCount > 0,
+                unreadCount: unreadCount,
+                photoUrl: otherUserPhoto,
+                onTap: () {
+                  // Navigate to chat detail screen
+                  // You can implement this later
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Chat with $otherUserName'),
+                      backgroundColor: AppColors.primary,
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -47,12 +141,18 @@ class _MessageCard extends StatelessWidget {
   final String message;
   final String time;
   final bool unread;
+  final int unreadCount;
+  final String? photoUrl;
+  final VoidCallback onTap;
 
   const _MessageCard({
     required this.name,
     required this.message,
     required this.time,
     required this.unread,
+    this.unreadCount = 0,
+    this.photoUrl,
+    required this.onTap,
   });
 
   @override
@@ -63,10 +163,13 @@ class _MessageCard extends StatelessWidget {
         contentPadding: const EdgeInsets.all(16),
         leading: Stack(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 28,
               backgroundColor: AppColors.pinkBackground,
-              child: Icon(Icons.person, color: AppColors.primary, size: 28),
+              backgroundImage: photoUrl != null ? NetworkImage(photoUrl!) : null,
+              child: photoUrl == null 
+                ? const Icon(Icons.person, color: AppColors.primary, size: 28)
+                : null,
             ),
             if (unread)
               Positioned(
@@ -117,11 +220,30 @@ class _MessageCard extends StatelessWidget {
                 fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
+            if (unreadCount > 0) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                child: Center(
+                  child: Text(
+                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
-        onTap: () {
-          // Navigate to chat screen
-        },
+        onTap: onTap,
       ),
     );
   }

@@ -1,169 +1,252 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
+import '../services/firestore_service.dart';
+import '../models/payment_model.dart';
 
 class PaymentsScreen extends StatelessWidget {
   const PaymentsScreen({super.key});
 
+  String _formatAmount(double amount) {
+    return 'PKR ${amount.toStringAsFixed(0)}';
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'processing':
+        return AppColors.info;
+      case 'failed':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'Received';
+      case 'pending':
+        return 'Pending';
+      case 'processing':
+        return 'Processing';
+      case 'failed':
+        return 'Failed';
+      default:
+        return status;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: const Text('Payments')),
+        body: const Center(child: Text('Please sign in to view payments')),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Payments')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Balance Cards
-            Row(
+      body: StreamBuilder<List<PaymentModel>>(
+        stream: FirestoreService().streamUserPayments(currentUser.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      (context as Element).markNeedsBuild();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final payments = snapshot.data ?? [];
+
+          // Calculate totals
+          final completedPayments = payments
+              .where((p) => p.status.toLowerCase() == 'completed')
+              .toList();
+          final pendingPayments = payments
+              .where((p) => p.status.toLowerCase() == 'pending')
+              .toList();
+
+          final availableBalance = completedPayments.fold<double>(
+            0,
+            (sum, p) => sum + p.amount,
+          );
+          final pendingAmount = pendingPayments.fold<double>(
+            0,
+            (sum, p) => sum + p.amount,
+          );
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _BalanceCard(
-                    title: 'Available Balance',
-                    amount: 'PKR 24,000',
-                    color: AppColors.success,
-                    icon: Icons.account_balance_wallet,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _BalanceCard(
-                    title: 'Pending Amount',
-                    amount: 'PKR 12,700',
-                    color: AppColors.warning,
-                    icon: Icons.pending,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Quick Actions
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Balance Cards
+                Row(
                   children: [
-                    const Text(
-                      'Weekly Revenue Projection',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                    Expanded(
+                      child: _BalanceCard(
+                        title: 'Available Balance',
+                        amount: _formatAmount(availableBalance),
+                        color: AppColors.success,
+                        icon: Icons.account_balance_wallet,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _BalanceCard(
+                        title: 'Pending Amount',
+                        amount: _formatAmount(pendingAmount),
+                        color: AppColors.warning,
+                        icon: Icons.pending,
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.trending_up,
-                            size: 32,
-                            color: AppColors.success,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                if (payments.isEmpty)
+                  Center(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 48),
+                        Icon(
+                          Icons.payment,
+                          size: 64,
+                          color: AppColors.textSecondary.withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No payments yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
                           ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Expected this week',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'PKR 18,500',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Complete projects to receive payments',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  // Payment Breakdown
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Payment History',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          ...List.generate(payments.length, (index) {
+                            final payment = payments[index];
+                            return Column(
+                              children: [
+                                if (index > 0) const Divider(height: 24),
+                                _PaymentItem(
+                                  title:
+                                      payment.projectTitle ?? 'Project Payment',
+                                  subtitle:
+                                      'Completed on ${_formatDate(payment.createdAt)}',
+                                  amount: _formatAmount(payment.amount),
+                                  status: _getStatusLabel(payment.status),
+                                  statusColor: _getStatusColor(payment.status),
+                                ),
+                              ],
+                            );
+                          }),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Payment Breakdown
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Payment Breakdown',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                  ),
+                  const SizedBox(height: 16),
+                  // Withdraw Button
+                  if (availableBalance > 0)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Withdrawal feature coming soon'),
+                              backgroundColor: AppColors.info,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.account_balance),
+                        label: const Text('Withdraw Funds'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    _PaymentItem(
-                      title: 'Logo Design',
-                      subtitle: 'Completed on Jan 15',
-                      amount: 'PKR 5,000',
-                      status: 'Received',
-                      statusColor: AppColors.success,
-                    ),
-                    const Divider(height: 24),
-                    _PaymentItem(
-                      title: 'Web Content Writing',
-                      subtitle: 'Completed on Jan 18',
-                      amount: 'PKR 3,500',
-                      status: 'Pending',
-                      statusColor: AppColors.warning,
-                    ),
-                    const Divider(height: 24),
-                    _PaymentItem(
-                      title: 'Social Media Strategy',
-                      subtitle: 'Completed on Jan 22',
-                      amount: 'PKR 8,000',
-                      status: 'Received',
-                      statusColor: AppColors.success,
-                    ),
-                    const Divider(height: 24),
-                    _PaymentItem(
-                      title: 'Brand Identity Package',
-                      subtitle: 'Completed on Jan 25',
-                      amount: 'PKR 12,000',
-                      status: 'Processing',
-                      statusColor: AppColors.info,
-                    ),
-                  ],
-                ),
-              ),
+                ],
+              ],
             ),
-            const SizedBox(height: 16),
-            // Withdraw Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.account_balance),
-                label: const Text('Withdraw Funds'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

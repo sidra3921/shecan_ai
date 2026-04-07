@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../models/user_model.dart';
 import 'settings_screen.dart';
 import 'user_type_screen.dart';
 
 Future<void> _logout(BuildContext context) async {
-  await FirebaseAuth.instance.signOut();
+  await AuthService().signOut();
   if (!context.mounted) {
     return;
   }
@@ -21,6 +24,19 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authService = AuthService();
+    final firestoreService = FirestoreService();
+    final userId = authService.currentUserId;
+
+    if (userId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profile')),
+        body: const Center(
+          child: Text('Please sign in to view profile'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -37,87 +53,159 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Profile Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
-              ),
-              child: Column(
-                children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 50,
-                      color: AppColors.primary,
-                    ),
+      body: StreamBuilder<UserModel?>(
+        stream: firestoreService.streamUser(userId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          }
+
+          final user = snapshot.data;
+
+          if (user == null) {
+            return const Center(child: Text('User not found'));
+          }
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Profile Header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.primaryGradient,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Tech Girl CA',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'UI/UX Designer & Mentor',
-                    style: TextStyle(fontSize: 14, color: Colors.white),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      _StatColumn(label: 'Projects', value: '12'),
-                      const SizedBox(width: 40),
-                      _StatColumn(label: 'Completed', value: '8'),
-                      const SizedBox(width: 40),
-                      _StatColumn(label: 'Rating', value: '4.8'),
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.white,
+                        backgroundImage: user.photoURL.isNotEmpty
+                            ? NetworkImage(user.photoURL)
+                            : null,
+                        child: user.photoURL.isEmpty
+                            ? const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: AppColors.primary,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        user.displayName,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user.bio.isNotEmpty ? user.bio : user.userType.toUpperCase(),
+                        style: const TextStyle(fontSize: 14, color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (user.skills.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: user.skills.take(3).map((skill) {
+                            return Chip(
+                              label: Text(skill),
+                              backgroundColor: Colors.white.withOpacity(0.2),
+                              labelStyle: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _StatColumn(
+                            label: 'Projects',
+                            value: '${user.completedProjects}',
+                          ),
+                          const SizedBox(width: 40),
+                          _StatColumn(
+                            label: 'Completed',
+                            value: '${user.completedProjects}',
+                          ),
+                          const SizedBox(width: 40),
+                          _StatColumn(
+                            label: 'Rating',
+                            value: user.rating > 0
+                                ? user.rating.toStringAsFixed(1)
+                                : 'N/A',
+                          ),
+                        ],
+                      ),
+                      if (user.hourlyRate > 0) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'PKR ${user.hourlyRate.toStringAsFixed(0)}/hour',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Menu Items
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _ProfileMenuItem(
-                    icon: Icons.person_outline,
-                    title: 'Edit Profile',
-                    onTap: () {},
-                  ),
-                  _ProfileMenuItem(
-                    icon: Icons.work_outline,
-                    title: 'My Projects',
-                    onTap: () {},
-                  ),
-                  _ProfileMenuItem(
-                    icon: Icons.payment,
-                    title: 'Payment Methods',
-                    onTap: () {},
-                  ),
-                  _ProfileMenuItem(
-                    icon: Icons.star_outline,
-                    title: 'Reviews & Ratings',
-                    onTap: () {},
-                  ),
-                  _ProfileMenuItem(
-                    icon: Icons.help_outline,
-                    title: 'Help & Support',
-                    onTap: () {},
-                  ),
-                  _ProfileMenuItem(
+                ),
+                const SizedBox(height: 16),
+                // Menu Items
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _ProfileMenuItem(
+                        icon: Icons.person_outline,
+                        title: 'Edit Profile',
+                        onTap: () {},
+                      ),
+                      _ProfileMenuItem(
+                        icon: Icons.work_outline,
+                        title: 'My Projects',
+                        onTap: () {},
+                      ),
+                      _ProfileMenuItem(
+                        icon: Icons.payment,
+                        title: 'Payment Methods',
+                        onTap: () {},
+                      ),
+                      _ProfileMenuItem(
+                        icon: Icons.star_outline,
+                        title: 'Reviews & Ratings',
+                        onTap: () {},
+                      ),
+                      _ProfileMenuItem(
+                        icon: Icons.help_outline,
+                        title: 'Help & Support',
+                        onTap: () {},
+                      ),
+                      _ProfileMenuItem(
                     icon: Icons.info_outline,
                     title: 'About',
                     onTap: () {},

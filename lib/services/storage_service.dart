@@ -1,0 +1,223 @@
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+
+class StorageService {
+  static final StorageService _instance = StorageService._internal();
+  factory StorageService() => _instance;
+  StorageService._internal();
+
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final ImagePicker _picker = ImagePicker();
+
+  // ==================== USER PROFILE ====================
+
+  /// Upload user profile photo
+  Future<String> uploadProfilePhoto(String userId, File imageFile) async {
+    try {
+      final ref = _storage.ref().child('users/$userId/profile.jpg');
+      final uploadTask = await ref.putFile(imageFile);
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload profile photo: $e');
+    }
+  }
+
+  /// Pick and upload profile photo
+  Future<String?> pickAndUploadProfilePhoto(String userId) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (image == null) return null;
+
+      final file = File(image.path);
+      return await uploadProfilePhoto(userId, file);
+    } catch (e) {
+      throw Exception('Failed to pick and upload photo: $e');
+    }
+  }
+
+  /// Delete user profile photo
+  Future<void> deleteProfilePhoto(String userId) async {
+    try {
+      final ref = _storage.ref().child('users/$userId/profile.jpg');
+      await ref.delete();
+    } catch (e) {
+      print('Profile photo deletion error: $e');
+    }
+  }
+
+  // ==================== PROJECT FILES ====================
+
+  /// Upload project attachment
+  Future<String> uploadProjectFile(
+    String projectId,
+    File file,
+    String fileName,
+  ) async {
+    try {
+      final ref = _storage.ref().child(
+        'projects/$projectId/attachments/$fileName',
+      );
+      final uploadTask = await ref.putFile(file);
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload project file: $e');
+    }
+  }
+
+  /// Upload project attachment with progress tracking
+  Future<String> uploadProjectFileWithProgress({
+    required String projectId,
+    required File file,
+    required String fileName,
+    required Function(double progress) onProgress,
+  }) async {
+    try {
+      final ref = _storage.ref().child(
+        'projects/$projectId/attachments/$fileName',
+      );
+      final uploadTask = ref.putFile(file);
+
+      uploadTask.snapshotEvents.listen((snapshot) {
+        final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+        onProgress(progress);
+      });
+
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload project file: $e');
+    }
+  }
+
+  /// Get all project attachments
+  Future<List<String>> getProjectAttachments(String projectId) async {
+    try {
+      final ref = _storage.ref().child('projects/$projectId/attachments');
+      final result = await ref.listAll();
+
+      List<String> urls = [];
+      for (var item in result.items) {
+        final url = await item.getDownloadURL();
+        urls.add(url);
+      }
+      return urls;
+    } catch (e) {
+      print('Failed to get project attachments: $e');
+      return [];
+    }
+  }
+
+  /// Delete project file
+  Future<void> deleteProjectFile(String projectId, String fileName) async {
+    try {
+      final ref = _storage.ref().child(
+        'projects/$projectId/attachments/$fileName',
+      );
+      await ref.delete();
+    } catch (e) {
+      print('Failed to delete project file: $e');
+    }
+  }
+
+  // ==================== CHAT MEDIA ====================
+
+  /// Upload chat image
+  Future<String> uploadChatImage(String chatId, File imageFile) async {
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final ref = _storage.ref().child('messages/$chatId/$timestamp.jpg');
+      final uploadTask = await ref.putFile(imageFile);
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload chat image: $e');
+    }
+  }
+
+  /// Pick and upload chat image
+  Future<String?> pickAndUploadChatImage(String chatId) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+
+      if (image == null) return null;
+
+      final file = File(image.path);
+      return await uploadChatImage(chatId, file);
+    } catch (e) {
+      throw Exception('Failed to pick and upload chat image: $e');
+    }
+  }
+
+  /// Take photo and upload to chat
+  Future<String?> takePhotoAndUploadToChat(String chatId) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+
+      if (image == null) return null;
+
+      final file = File(image.path);
+      return await uploadChatImage(chatId, file);
+    } catch (e) {
+      throw Exception('Failed to take and upload photo: $e');
+    }
+  }
+
+  /// Upload chat file (document, PDF, etc.)
+  Future<String> uploadChatFile(
+    String chatId,
+    File file,
+    String fileName,
+  ) async {
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final ref = _storage.ref().child(
+        'messages/$chatId/${timestamp}_$fileName',
+      );
+      final uploadTask = await ref.putFile(file);
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload chat file: $e');
+    }
+  }
+
+  // ==================== HELPER METHODS ====================
+
+  /// Get file extension from path
+  String getFileExtension(String path) {
+    return path.split('.').last.toLowerCase();
+  }
+
+  /// Check if file is an image
+  bool isImageFile(String path) {
+    final extension = getFileExtension(path);
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
+  }
+
+  /// Get file size in MB
+  Future<double> getFileSizeMB(File file) async {
+    final bytes = await file.length();
+    return bytes / (1024 * 1024);
+  }
+
+  /// Validate file size (max 10MB)
+  Future<bool> validateFileSize(File file, {double maxSizeMB = 10.0}) async {
+    final sizeMB = await getFileSizeMB(file);
+    return sizeMB <= maxSizeMB;
+  }
+}

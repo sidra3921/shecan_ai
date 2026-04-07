@@ -37,6 +37,11 @@ A beautiful, responsive Flutter application designed to connect women freelancer
 - **Framework**: Flutter 3.8.1+
 - **Language**: Dart
 - **State Management**: Provider
+- **Backend**: Firebase
+  - Firebase Authentication
+  - Cloud Firestore (Database)
+  - Firebase Storage (File Storage)
+  - Cloud Messaging (Notifications)
 - **Charts**: FL Chart
 - **UI Components**: 
   - Percent Indicator
@@ -56,6 +61,14 @@ dependencies:
   image_picker: ^1.0.7
   intl: ^0.19.0
   shared_preferences: ^2.2.2
+  
+  # Firebase Backend
+  firebase_core: ^4.5.0
+  firebase_auth: ^6.2.0
+  cloud_firestore: ^5.7.0
+  firebase_storage: ^12.5.0
+  firebase_messaging: ^15.2.0
+  firebase_analytics: ^11.5.0
 ```
 
 ## 🚀 Getting Started
@@ -79,18 +92,19 @@ dependencies:
    flutter pub get
    ```
 
-3. **Configure Firebase (required for Sign In / Sign Up)**
-   ```bash
-   dart pub global activate flutterfire_cli
-   flutterfire configure
-   ```
-   This command links the app to your Firebase project and creates platform config files.
+3. **Setup Firebase Backend** 
+   
+   **Quick Setup:**
+   - Create `lib/services` directory
+   - Copy service files from root (see **QUICK_START_FIREBASE.md**)
+   - Follow **FIREBASE_SETUP.md** for Firebase Console configuration
+   
+   **Detailed Documentation:**
+   - 📖 **[BACKEND_SUMMARY.md](BACKEND_SUMMARY.md)** - Complete backend overview
+   - 🚀 **[QUICK_START_FIREBASE.md](QUICK_START_FIREBASE.md)** - Quick setup guide with examples
+   - ⚙️ **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Detailed Firebase configuration
 
-4. **Enable Email/Password auth in Firebase Console**
-   - Open Firebase Console → Authentication → Sign-in method
-   - Enable `Email/Password`
-
-5. **Run the app**
+4. **Run the app**
    ```bash
    # For Android
    flutter run
@@ -179,6 +193,19 @@ lib/
 ├── constants/
 │   ├── app_colors.dart
 │   └── app_theme.dart
+├── models/
+│   ├── user_model.dart
+│   ├── project_model.dart
+│   ├── message_model.dart
+│   ├── notification_model.dart
+│   ├── payment_model.dart
+│   ├── dispute_model.dart
+│   └── review_model.dart
+├── services/
+│   ├── firestore_service.dart
+│   ├── storage_service.dart
+│   ├── notification_service.dart
+│   └── auth_service.dart
 ├── screens/
 │   ├── splash_screen.dart
 │   ├── user_type_screen.dart
@@ -199,7 +226,6 @@ lib/
 │   ├── settings_screen.dart
 │   └── messages_screen.dart
 ├── widgets/
-├── models/
 └── main.dart
 ```
 
@@ -219,14 +245,18 @@ static const Color primary = Color(0xFFE91E63); // Change to your color
 
 ## 📝 Features Roadmap
 
-- [ ] Backend integration
-- [ ] Real-time chat functionality
+- [x] **Backend integration** ✅ (Firebase Firestore, Storage, Messaging)
+- [x] **Real-time data synchronization** ✅ (Firestore streams)
+- [x] **Offline support** ✅ (Automatic with Firestore)
+- [x] **Push notifications** ✅ (Firebase Cloud Messaging)
+- [x] **File storage** ✅ (Firebase Storage)
+- [x] **User authentication** ✅ (Firebase Auth)
+- [ ] Real-time chat UI integration
 - [ ] Payment gateway integration
-- [ ] Push notifications
-- [ ] Advanced analytics
+- [ ] Cloud Functions (automated tasks)
+- [ ] Advanced analytics dashboard
 - [ ] Multi-language support
 - [ ] Dark mode
-- [ ] Offline support
 
 ## 🤝 Contributing
 

@@ -1,51 +1,159 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
+import '../services/firestore_service.dart';
+import '../models/dispute_model.dart';
 
 class DisputesScreen extends StatelessWidget {
   const DisputesScreen({super.key});
 
+  String _formatDate(DateTime date) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return AppColors.error;
+      case 'in-progress':
+      case 'in_progress':
+        return AppColors.warning;
+      case 'resolved':
+        return AppColors.success;
+      case 'closed':
+        return AppColors.textSecondary;
+      default:
+        return AppColors.info;
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'in-progress':
+      case 'in_progress':
+        return 'In Progress';
+      case 'open':
+        return 'Open';
+      case 'resolved':
+        return 'Resolved';
+      case 'closed':
+        return 'Closed';
+      default:
+        return status;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    
+    if (currentUser == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: const Text('Disputes')),
+        body: const Center(child: Text('Please sign in to view disputes')),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Disputes')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _DisputeCard(
-            disputeId: '#D001',
-            title: 'Payment not received',
-            projectName: 'Logo Design for Barela Salon',
-            client: 'Sarah Khan',
-            status: 'Open',
-            statusColor: AppColors.error,
-            date: 'Jan 20, 2026',
-            description:
-                'The client has not released the payment even after project completion.',
-          ),
-          _DisputeCard(
-            disputeId: '#D002',
-            title: 'Scope creep issue',
-            projectName: 'Website Development',
-            client: 'Ayesha Ali',
-            status: 'In Progress',
-            statusColor: AppColors.warning,
-            date: 'Jan 18, 2026',
-            description:
-                'Client is requesting additional features not mentioned in the original scope.',
-          ),
-          _DisputeCard(
-            disputeId: '#D003',
-            title: 'Quality concerns',
-            projectName: 'Content Writing',
-            client: 'Fatima Ahmed',
-            status: 'Resolved',
-            statusColor: AppColors.success,
-            date: 'Jan 15, 2026',
-            description:
-                'Client raised concerns about content quality. Issue has been resolved.',
-          ),
-        ],
+      body: StreamBuilder<List<DisputeModel>>(
+        stream: FirestoreService().streamUserDisputes(currentUser.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      (context as Element).markNeedsBuild();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final disputes = snapshot.data ?? [];
+
+          if (disputes.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.gavel, 
+                    size: 64, 
+                    color: AppColors.textSecondary.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No disputes',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'All your projects are running smoothly',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: disputes.length,
+            itemBuilder: (context, index) {
+              final dispute = disputes[index];
+              return _DisputeCard(
+                disputeId: '#D${dispute.id.substring(0, 4).toUpperCase()}',
+                title: dispute.reason,
+                projectName: dispute.projectTitle ?? 'Project',
+                client: dispute.clientName ?? 'Client',
+                status: _getStatusLabel(dispute.status),
+                statusColor: _getStatusColor(dispute.status),
+                date: _formatDate(dispute.createdAt),
+                description: dispute.description,
+                onViewDetails: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Dispute: ${dispute.reason}'),
+                      backgroundColor: AppColors.info,
+                    ),
+                  );
+                },
+                onTakeAction: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Action options coming soon'),
+                      backgroundColor: AppColors.warning,
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -60,6 +168,8 @@ class _DisputeCard extends StatelessWidget {
   final Color statusColor;
   final String date;
   final String description;
+  final VoidCallback onViewDetails;
+  final VoidCallback onTakeAction;
 
   const _DisputeCard({
     required this.disputeId,
@@ -70,6 +180,8 @@ class _DisputeCard extends StatelessWidget {
     required this.statusColor,
     required this.date,
     required this.description,
+    required this.onViewDetails,
+    required this.onTakeAction,
   });
 
   @override
@@ -202,14 +314,14 @@ class _DisputeCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {},
+                    onPressed: onViewDetails,
                     child: const Text('View Details'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: onTakeAction,
                     child: const Text('Take Action'),
                   ),
                 ),

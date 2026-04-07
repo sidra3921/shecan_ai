@@ -11,6 +11,20 @@ class ProjectModel {
   final String? mentorId;
   final List<String> skills;
   final int progress; // 0-100
+
+  // Location fields
+  final double? latitude;
+  final double? longitude;
+  final String? city;
+  final String? country;
+  final String? address;
+
+  // Additional fields
+  final String?
+  category; // 'design', 'development', 'writing', 'marketing', etc.
+  final String? experienceLevel; // 'beginner', 'intermediate', 'expert'
+  final bool isUrgent; // Whether project is urgent
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -25,6 +39,14 @@ class ProjectModel {
     this.mentorId,
     this.skills = const [],
     this.progress = 0,
+    this.latitude,
+    this.longitude,
+    this.city,
+    this.country,
+    this.address,
+    this.category,
+    this.experienceLevel,
+    this.isUrgent = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) : createdAt = createdAt ?? DateTime.now(),
@@ -41,6 +63,14 @@ class ProjectModel {
       'mentorId': mentorId,
       'skills': skills,
       'progress': progress,
+      'latitude': latitude,
+      'longitude': longitude,
+      'city': city,
+      'country': country,
+      'address': address,
+      'category': category,
+      'experienceLevel': experienceLevel,
+      'isUrgent': isUrgent,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -58,6 +88,14 @@ class ProjectModel {
       mentorId: map['mentorId'],
       skills: List<String>.from(map['skills'] ?? []),
       progress: map['progress'] ?? 0,
+      latitude: map['latitude']?.toDouble(),
+      longitude: map['longitude']?.toDouble(),
+      city: map['city'],
+      country: map['country'],
+      address: map['address'],
+      category: map['category'],
+      experienceLevel: map['experienceLevel'],
+      isUrgent: map['isUrgent'] ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -72,6 +110,14 @@ class ProjectModel {
     String? mentorId,
     List<String>? skills,
     int? progress,
+    double? latitude,
+    double? longitude,
+    String? city,
+    String? country,
+    String? address,
+    String? category,
+    String? experienceLevel,
+    bool? isUrgent,
   }) {
     return ProjectModel(
       id: id,
@@ -84,6 +130,14 @@ class ProjectModel {
       mentorId: mentorId ?? this.mentorId,
       skills: skills ?? this.skills,
       progress: progress ?? this.progress,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      city: city ?? this.city,
+      country: country ?? this.country,
+      address: address ?? this.address,
+      category: category ?? this.category,
+      experienceLevel: experienceLevel ?? this.experienceLevel,
+      isUrgent: isUrgent ?? this.isUrgent,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

@@ -3,7 +3,6 @@ import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../models/notification_model.dart';
-import 'package:intl/intl.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -83,10 +82,13 @@ class NotificationsScreen extends StatelessWidget {
             itemCount: notifications.length,
             itemBuilder: (context, index) {
               final notification = notifications[index];
-              return _buildNotificationItem(
-                context,
-                notification,
-                firestoreService,
+              return _NotificationCard(
+                notification: notification,
+                onTap: () async {
+                  if (!notification.read) {
+                    await firestoreService.markNotificationAsRead(notification.id);
+                  }
+                },
               );
             },
           );
@@ -94,15 +96,19 @@ class NotificationsScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildNotificationItem(
-    BuildContext context,
-    NotificationModel notification,
-    FirestoreService firestoreService,
-  ) {
-    final dateFormat = DateFormat('MMM d, h:mm a');
-    final timeAgo = _getTimeAgo(notification.createdAt);
+class _NotificationCard extends StatelessWidget {
+  final NotificationModel notification;
+  final VoidCallback onTap;
 
+  const _NotificationCard({
+    required this.notification,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     IconData icon;
     Color iconColor;
 
@@ -131,59 +137,19 @@ class NotificationsScreen extends StatelessWidget {
         icon = Icons.notifications;
         iconColor = Colors.grey;
     }
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Notifications')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _NotificationCard(
-            icon: Icons.person_add,
-            iconColor: AppColors.info,
-            title: 'A Mentor Joins',
-            message:
-                'Sarah Johnson just joined as a new mentor specializing in UI/UX Design.',
-            time: '2 hours ago',
-          ),
-          _NotificationCard(
-            icon: Icons.check_circle,
-            iconColor: AppColors.success,
-            title: 'Event/Action Completed',
-            message:
-                'Your project "Logo Design" has been successfully completed.',
-            time: '5 hours ago',
-          ),
-          _NotificationCard(
-            icon: Icons.edit,
-            iconColor: AppColors.warning,
-            title: 'Photo Editing',
-            message:
-                'New photo editing request from client requires your attention.',
-            time: '1 day ago',
-          ),
-          _NotificationCard(
-            icon: Icons.people,
-            iconColor: Colors.purple,
-            title: 'SEO Writing',
-            message:
-                'You have been invited to collaborate on an SEO writing project.',
-            time: '2 days ago',
-          ),
-        ],
-      ),
-    );
-  }
+
+    final timeAgo = _getTimeAgo(notification.createdAt);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: notification.read ? Colors.white : AppColors.pinkBackground.withOpacity(0.3),
+      color: notification.read ? Colors.white : AppColors.background.withValues(alpha: 0.5),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: iconColor, size: 24),
@@ -214,7 +180,7 @@ class NotificationsScreen extends StatelessWidget {
               timeAgo,
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textSecondary.withOpacity(0.7),
+                color: AppColors.textSecondary.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -229,12 +195,7 @@ class NotificationsScreen extends StatelessWidget {
                 ),
               )
             : null,
-        onTap: () async {
-          if (!notification.read) {
-            await firestoreService.markNotificationAsRead(notification.id);
-          }
-          // TODO: Navigate based on notification type
-        },
+        onTap: onTap,
       ),
     );
   }
@@ -256,29 +217,5 @@ class NotificationsScreen extends StatelessWidget {
     } else {
       return 'Just now';
     }
-  }
-}
-
-            ),
-            const SizedBox(height: 8),
-            Text(
-              time,
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary.withOpacity(0.7),
-              ),
-            ),
-          ],
-        ),
-        trailing: ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            minimumSize: const Size(60, 32),
-          ),
-          child: const Text('View', style: TextStyle(fontSize: 12)),
-        ),
-      ),
-    );
   }
 }

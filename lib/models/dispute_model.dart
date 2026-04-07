@@ -50,8 +50,13 @@ class DisputeModel {
       status: map['status'] ?? 'open',
       participants: List<String>.from(map['participants'] ?? []),
       messages: List<Map<String, dynamic>>.from(map['messages'] ?? []),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       resolvedAt: (map['resolvedAt'] as Timestamp?)?.toDate(),
     );
   }
+
+  // Helper getters
+  String get projectTitle => 'Project $projectId';
+  String get clientName => raisedBy;
+  String get description => reason;
 }

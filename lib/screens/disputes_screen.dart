@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
 import '../models/dispute_model.dart';
 
 class DisputesScreen extends StatelessWidget {
@@ -47,8 +47,8 @@ class DisputesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    
+    final currentUser = GetIt.I<SupabaseAuthService>().currentUser;
+
     if (currentUser == null) {
       return Scaffold(
         backgroundColor: AppColors.background,
@@ -60,8 +60,8 @@ class DisputesScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Disputes')),
-      body: StreamBuilder<List<DisputeModel>>(
-        stream: FirestoreService().streamUserDisputes(currentUser.uid),
+      body: FutureBuilder<List<DisputeModel>>(
+        future: _fetchUserDisputes(currentUser.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -156,6 +156,11 @@ class DisputesScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<List<DisputeModel>> _fetchUserDisputes(String userId) async {
+    // TODO: Fetch from Supabase
+    return [];
   }
 }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
+import '../services/supabase_auth_service.dart';
 import 'complete_profile_screen.dart';
 import 'main_navigation_screen.dart';
 
@@ -32,7 +32,7 @@ class _SignInScreenState extends State<SignInScreen>
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final isSignIn = _tabController.index == 0;
-    final authService = AuthService();
+    final authService = SupabaseAuthService();
 
     setState(() {
       _isLoading = true;

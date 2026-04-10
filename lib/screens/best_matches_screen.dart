@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
 import '../services/recommendation_service.dart';
+import '../services/supabase_auth_service.dart';
 
 class BestMatchesScreen extends StatefulWidget {
   const BestMatchesScreen({super.key});
@@ -22,7 +23,7 @@ class _BestMatchesScreenState extends State<BestMatchesScreen> {
   }
 
   void _loadRecommendations() {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = GetIt.I<SupabaseAuthService>().currentUser?.id;
     if (userId != null) {
       _recommendations = _recommendationService.getGigRecommendations(
         userId: userId,
@@ -134,7 +135,7 @@ class _RecommendedGigCardState extends State<_RecommendedGigCard> {
   }
 
   Future<void> _toggleSave() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = GetIt.I<SupabaseAuthService>().currentUser?.id;
     if (userId == null) return;
 
     try {
@@ -174,7 +175,7 @@ class _RecommendedGigCardState extends State<_RecommendedGigCard> {
   }
 
   Future<void> _applyForGig() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = GetIt.I<SupabaseAuthService>().currentUser?.id;
     if (userId == null) return;
 
     try {

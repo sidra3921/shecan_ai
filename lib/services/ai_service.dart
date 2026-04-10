@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Firestore removed - use SupabaseDatabaseService instead
 import '../models/user_model.dart';
 
 class AIService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // FirebaseFirestore instance removed
 
   // NOTE: Add your OpenAI API Key to environment
   static const String openAiApiKey = 'sk-...';

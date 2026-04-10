@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
+import '../services/supabase_database_service.dart';
 import '../models/project_model.dart';
 
 class PostProjectScreen extends StatefulWidget {
@@ -50,8 +51,8 @@ class _PostProjectScreenState extends State<PostProjectScreen> {
     });
 
     try {
-      final authService = AuthService();
-      final firestoreService = FirestoreService();
+      final authService = SupabaseAuthService();
+      final databaseService = GetIt.I<SupabaseDatabaseService>();
       final userId = authService.currentUserId!;
 
       final project = ProjectModel(
@@ -65,7 +66,7 @@ class _PostProjectScreenState extends State<PostProjectScreen> {
         status: 'pending',
       );
 
-      await firestoreService.createProject(project);
+      await databaseService.createProject(project);
 
       if (!mounted) return;
 

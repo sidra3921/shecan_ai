@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
 import '../models/payment_model.dart';
 
 class PaymentsScreen extends StatelessWidget {
@@ -61,7 +61,7 @@ class PaymentsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUser = GetIt.I<SupabaseAuthService>().currentUser;
 
     if (currentUser == null) {
       return Scaffold(
@@ -74,8 +74,8 @@ class PaymentsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Payments')),
-      body: StreamBuilder<List<PaymentModel>>(
-        stream: FirestoreService().streamUserPayments(currentUser.uid),
+      body: FutureBuilder<List<PaymentModel>>(
+        future: _fetchUserPayments(currentUser.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -249,6 +249,11 @@ class PaymentsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<List<PaymentModel>> _fetchUserPayments(String userId) async {
+    // TODO: Fetch from Supabase
+    return [];
   }
 }
 

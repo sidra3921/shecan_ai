@@ -46,8 +46,8 @@ Future<void> main() async {
   // Get from: https://app.supabase.com → Project Settings → API
   try {
     await supabaseService.initialize(
-      supabaseUrl: 'YOUR_SUPABASE_URL', // e.g., https://xxxxx.supabase.co
-      supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY',
+      supabaseUrl: 'https://ieawgfrukdlhsbicnjhk.supabase.co',
+      supabaseAnonKey: 'sb_publishable_kMwVg-kJ-688DXmlOvf_bg_9ItvRCa9',
     );
     print('✅ Supabase initialized successfully');
   } catch (e) {

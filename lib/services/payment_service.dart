@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Firestore removed - use SupabaseDatabaseService instead
 import '../models/payment_model.dart';
 
 class PaymentService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // FirebaseFirestore instance removed
 
   // NOTE: Add your Stripe keys to .env or environment
   // For production, use: https://pub.dev/packages/flutter_stripe

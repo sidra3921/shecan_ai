@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Firestore removed - use SupabaseDatabaseService instead
 import '../models/chat_model.dart';
 
 class ChatService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // FirebaseFirestore instance removed
 
   /// Get or create a conversation between two users
   Future<Conversation> getOrCreateConversation({
@@ -144,7 +144,8 @@ class ChatService {
           .collection('messages')
           .doc(messageId)
           .update({
-            'readBy': FieldValue.arrayUnion([userId]),
+            // Replace with Supabase: doc.update({...});
+            //'readBy': [...],
             'isRead': true,
           });
     } catch (e) {

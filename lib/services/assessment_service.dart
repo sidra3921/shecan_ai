@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Firestore removed - use SupabaseDatabaseService instead
 import '../models/assessment_model.dart';
 
 class AssessmentService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // FirebaseFirestore instance removed
 
   /// Get all available skill assessments
   Future<List<SkillAssessment>> getAvailableAssessments() async {
@@ -129,11 +129,8 @@ class AssessmentService {
     required String badge,
   }) async {
     try {
-      await _firestore.collection('users').doc(userId).update({
-        'verifiedSkills': FieldValue.arrayUnion([
-          {'name': skillName, 'badge': badge, 'verifiedAt': DateTime.now()},
-        ]),
-      });
+      // TODO: Replace with Supabase database operation
+      print('Add verified skill: $skillName');
     } catch (e) {
       print('Error updating user skills: $e');
     }

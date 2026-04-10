@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:get_it/get_it.dart';
 import '../models/chat_model.dart';
 import '../services/chat_service.dart';
+import '../services/supabase_auth_service.dart';
 import '../constants/app_colors.dart';
 
 final getIt = GetIt.instance;
@@ -13,7 +14,9 @@ class ChatListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
+    // Current user from Supabase
+    final authService = GetIt.I<SupabaseAuthService>();
+    final currentUser = authService.currentUser;
     final chatService = getIt<ChatService>();
 
     if (currentUser == null) {
@@ -31,7 +34,7 @@ class ChatListScreen extends StatelessWidget {
         elevation: 0,
       ),
       body: StreamBuilder<List<Conversation>>(
-        stream: chatService.getConversationsStream(currentUser.uid),
+        stream: chatService.getConversationsStream(currentUser.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -195,7 +198,7 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   late final ChatService chatService;
   late final TextEditingController messageController;
-  final currentUser = FirebaseAuth.instance.currentUser;
+  final currentUser = GetIt.I<SupabaseAuthService>().currentUser;
 
   @override
   void initState() {
@@ -219,9 +222,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       await chatService.sendMessage(
         conversationId: widget.conversationId,
-        senderId: currentUser!.uid,
-        senderName: currentUser!.displayName ?? 'Unknown',
-        senderAvatar: currentUser!.photoURL ?? '',
+        senderId: currentUser!.id,
+        senderName: currentUser!.userMetadata?['display_name'] as String? ?? 'Unknown',
+        senderAvatar: currentUser!.userMetadata?['avatar_url'] as String? ?? '',
         content: text,
       );
     } catch (e) {
@@ -309,7 +312,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isCurrentUser = message.senderId == currentUser?.uid;
+                    final isCurrentUser = message.senderId == currentUser?.id;
 
                     return Align(
                       alignment: isCurrentUser

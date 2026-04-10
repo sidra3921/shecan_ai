@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ChatMessage {
   final String id;
   final String conversationId;
@@ -40,6 +38,19 @@ class ChatMessage {
     };
   }
 
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   factory ChatMessage.fromMap(Map<String, dynamic> map, String docId) {
     return ChatMessage(
       id: docId,
@@ -49,7 +60,7 @@ class ChatMessage {
       senderAvatar: map['senderAvatar'] ?? '',
       content: map['content'] ?? '',
       attachmentUrls: List<String>.from(map['attachmentUrls'] ?? []),
-      timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      timestamp: _parseDateTime(map['timestamp']) ?? DateTime.now(),
       readBy: List<String>.from(map['readBy'] ?? []),
       isRead: map['isRead'] ?? false,
     );
@@ -110,6 +121,19 @@ class Conversation {
     };
   }
 
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   factory Conversation.fromMap(Map<String, dynamic> map, String docId) {
     return Conversation(
       id: docId,
@@ -119,12 +143,10 @@ class Conversation {
         map['participantAvatars'] ?? {},
       ),
       lastMessage: map['lastMessage'] ?? '',
-      lastMessageTimestamp:
-          (map['lastMessageTimestamp'] as Timestamp?)?.toDate() ??
-          DateTime.now(),
+      lastMessageTimestamp: _parseDateTime(map['lastMessageTimestamp']) ?? DateTime.now(),
       lastMessageSenderId: map['lastMessageSenderId'] ?? '',
       unreadCount: map['unreadCount'] ?? 0,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
       projectId: map['projectId'],
       projectTitle: map['projectTitle'],
     );

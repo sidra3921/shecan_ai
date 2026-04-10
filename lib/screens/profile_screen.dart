@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
+import '../services/supabase_database_service.dart';
 import '../models/user_model.dart';
 import 'settings_screen.dart';
 import 'user_type_screen.dart';
 
 Future<void> _logout(BuildContext context) async {
-  await AuthService().signOut();
+  await GetIt.I<SupabaseAuthService>().signOut();
   if (!context.mounted) {
     return;
   }
@@ -23,8 +24,8 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    final firestoreService = FirestoreService();
+    final authService = SupabaseAuthService();
+    final databaseService = SupabaseDatabaseService();
     final userId = authService.currentUserId;
 
     if (userId == null) {
@@ -51,7 +52,7 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
       body: StreamBuilder<UserModel?>(
-        stream: firestoreService.streamUser(userId),
+        stream: databaseService.streamUser(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

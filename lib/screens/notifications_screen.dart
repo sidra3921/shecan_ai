@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
+import '../services/supabase_database_service.dart';
 import '../models/notification_model.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -9,8 +9,8 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    final firestoreService = FirestoreService();
+    final authService = SupabaseAuthService();
+    final databaseService = SupabaseDatabaseService();
     final userId = authService.currentUserId;
 
     if (userId == null) {
@@ -35,7 +35,7 @@ class NotificationsScreen extends StatelessWidget {
         ],
       ),
       body: StreamBuilder<List<NotificationModel>>(
-        stream: firestoreService.streamUserNotifications(userId),
+        stream: databaseService.streamUserNotifications(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -86,7 +86,7 @@ class NotificationsScreen extends StatelessWidget {
                 notification: notification,
                 onTap: () async {
                   if (!notification.read) {
-                    await firestoreService.markNotificationAsRead(
+                    await databaseService.markNotificationAsRead(
                       notification.id,
                     );
                   }

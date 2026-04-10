@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import '../constants/app_colors.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
 import 'analytics_screen.dart';
 import 'project_management_screen.dart';
 import 'user_type_screen.dart';
 
 Future<void> _logout(BuildContext context) async {
-  await FirebaseAuth.instance.signOut();
+    await GetIt.I<SupabaseAuthService>().signOut();
   if (!context.mounted) {
     return;
   }
@@ -37,8 +38,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _loadStats() {
     setState(() {
-      _statsFuture = FirestoreService().getDashboardStats();
+      _statsFuture = _getDashboardStats();
     });
+  }
+
+  Future<Map<String, dynamic>> _getDashboardStats() async {
+    return {
+      'totalProjects': 0,
+      'activeProjects': 0,
+      'completedProjects': 0,
+      'totalEarnings': 0.0,
+    };
   }
 
   @override
@@ -306,7 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  FirebaseAuth.instance.currentUser?.displayName ?? 'SheCan User',
+                  GetIt.I<SupabaseAuthService>().currentUser?.userMetadata?['display_name'] as String? ?? 'SheCan User',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -314,7 +324,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 Text(
-                  FirebaseAuth.instance.currentUser?.email ?? '',
+                  GetIt.I<SupabaseAuthService>().currentUser?.email ?? '',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 12,

@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
-import '../services/storage_service.dart';
+import '../services/supabase_auth_service.dart';
+import '../services/supabase_database_service.dart';
+import '../services/supabase_storage_service.dart';
 import 'main_navigation_screen.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
@@ -43,9 +43,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     });
 
     try {
-      final authService = AuthService();
-      final firestoreService = FirestoreService();
-      final storageService = StorageService();
+      final authService = SupabaseAuthService();
+      final databaseService = SupabaseDatabaseService();
+      final storageService = SupabaseStorageService();
       final userId = authService.currentUserId!;
 
       // Upload profile photo if selected

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
+import '../services/supabase_database_service.dart';
 
 class MessagesScreen extends StatelessWidget {
   const MessagesScreen({super.key});
@@ -24,8 +25,8 @@ class MessagesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    
+    final currentUser = GetIt.I<SupabaseAuthService>().currentUser;
+
     if (currentUser == null) {
       return Scaffold(
         backgroundColor: AppColors.background,
@@ -37,8 +38,8 @@ class MessagesScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Messages')),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: FirestoreService().streamUserChats(currentUser.uid),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: GetIt.I<SupabaseDatabaseService>().query('messages'),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

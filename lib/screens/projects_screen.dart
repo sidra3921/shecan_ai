@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
+import '../services/supabase_auth_service.dart';
+import '../services/supabase_database_service.dart';
 import '../models/project_model.dart';
 import 'package:intl/intl.dart';
 
@@ -16,8 +16,8 @@ class ProjectsScreen extends StatefulWidget {
 class _ProjectsScreenState extends State<ProjectsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _authService = AuthService();
-  final _firestoreService = FirestoreService();
+  final _authService = SupabaseAuthService();
+  final _databaseService = SupabaseDatabaseService();
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
     }
 
     return StreamBuilder<List<ProjectModel>>(
-      stream: _firestoreService.streamClientProjects(userId, status: status),
+      stream: _databaseService.streamClientProjects(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

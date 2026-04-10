@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
+import '../services/supabase_auth_service.dart';
 import 'user_type_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _smsNotifications = false;
 
   Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+    await GetIt.I<SupabaseAuthService>().signOut();
     if (!mounted) {
       return;
     }

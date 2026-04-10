@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SavedGigModel {
   final String id;
@@ -22,7 +21,7 @@ class SavedGigModel {
       'userId': userId,
       'projectId': projectId,
       'projectTitle': projectTitle,
-      'savedAt': Timestamp.fromDate(savedAt),
+      'savedAt': savedAt.toIso8601String(),
       'notes': notes,
     };
   }
@@ -33,8 +32,20 @@ class SavedGigModel {
       userId: map['userId'] ?? '',
       projectId: map['projectId'] ?? '',
       projectTitle: map['projectTitle'] ?? '',
-      savedAt: (map['savedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      savedAt: _parseDateTime(map['savedAt']) ?? DateTime.now(),
       notes: map['notes'],
     );
   }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
 }
+

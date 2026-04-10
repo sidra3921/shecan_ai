@@ -1,5 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:math';
+
 
 class UserModel {
   final String id;
@@ -69,8 +68,8 @@ class UserModel {
       'city': city,
       'country': country,
       'address': address,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -94,8 +93,8 @@ class UserModel {
       city: map['city'],
       country: map['country'],
       address: map['address'],
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(map['updatedAt']) ?? DateTime.now(),
     );
   }
 
@@ -184,5 +183,17 @@ class UserModel {
 
   static double _toRadians(double degrees) {
     return degrees * 3.141592653589793 / 180;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        print('Error parsing DateTime: $e');
+        return null;
+      }
+    }
+    return null;
   }
 }

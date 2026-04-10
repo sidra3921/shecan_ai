@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ViewHistoryModel {
   final String id;
@@ -22,7 +21,7 @@ class ViewHistoryModel {
       'userId': userId,
       'projectId': projectId,
       'projectTitle': projectTitle,
-      'viewedAt': Timestamp.fromDate(viewedAt),
+      'viewedAt': viewedAt.toIso8601String(),
       'applied': applied,
     };
   }
@@ -33,8 +32,20 @@ class ViewHistoryModel {
       userId: map['userId'] ?? '',
       projectId: map['projectId'] ?? '',
       projectTitle: map['projectTitle'] ?? '',
-      viewedAt: (map['viewedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      viewedAt: _parseDateTime(map['viewedAt']) ?? DateTime.now(),
       applied: map['applied'] ?? false,
     );
   }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
 }
+

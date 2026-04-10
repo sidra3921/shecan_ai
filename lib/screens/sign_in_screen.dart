@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
 import '../services/supabase_auth_service.dart';
 import 'complete_profile_screen.dart';
@@ -86,24 +85,7 @@ class _SignInScreenState extends State<SignInScreen>
     }
   }
 
-  String _authErrorMessage(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'Please enter a valid email address.';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Invalid email or password.';
-      case 'email-already-in-use':
-        return 'An account already exists with this email.';
-      case 'weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'network-request-failed':
-        return 'Network error. Check your internet connection.';
-      default:
-        return e.message ?? 'Authentication failed. Please try again.';
-    }
-  }
+
 
   @override
   void initState() {

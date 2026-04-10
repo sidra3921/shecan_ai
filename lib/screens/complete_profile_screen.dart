@@ -54,25 +54,19 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         photoURL = await storageService.uploadProfilePhoto(userId, _profileImage!);
       }
 
-      // Get current user data
-      final currentUser = await firestoreService.getUser(userId);
-      
-      if (currentUser != null) {
-        // Update user profile in Firestore
-        final updatedUser = currentUser.copyWith(
-          displayName: _nameController.text.trim(),
-          bio: _bioController.text.trim(),
-          photoURL: photoURL.isNotEmpty ? photoURL : currentUser.photoURL,
-        );
-        
-        await firestoreService.saveUser(updatedUser);
+      // Update user profile in Supabase
+      await databaseService.updateUser(userId, {
+        'display_name': _nameController.text.trim(),
+        'title': _titleController.text.trim(),
+        'bio': _bioController.text.trim(),
+        'photo_url': photoURL.isNotEmpty ? photoURL : null,
+      });
 
-        // Update Firebase Auth profile
-        await authService.updateUserProfile(
-          displayName: _nameController.text.trim(),
-          photoURL: photoURL.isNotEmpty ? photoURL : null,
-        );
-      }
+      // Update Auth profile metadata
+      await authService.updateUserProfile(
+        displayName: _nameController.text.trim(),
+        photoURL: photoURL.isNotEmpty ? photoURL : null,
+      );
 
       if (!mounted) return;
 

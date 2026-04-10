@@ -85,6 +85,12 @@ class SupabaseDatabaseService {
     }).eq('id', userId);
   }
 
+  /// Update user profile
+  Future<void> updateUser(String userId, Map<String, dynamic> updates) async {
+    updates['updated_at'] = DateTime.now().toIso8601String();
+    await _supabase.from('users').update(updates).eq('id', userId);
+  }
+
   // ==================== PROJECT OPERATIONS ====================
 
   /// Create new project

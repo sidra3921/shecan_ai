@@ -30,9 +30,7 @@ class ProfileScreen extends StatelessWidget {
     if (userId == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Profile')),
-        body: const Center(
-          child: Text('Please sign in to view profile'),
-        ),
+        body: const Center(child: Text('Please sign in to view profile')),
       );
     }
 
@@ -60,9 +58,7 @@ class ProfileScreen extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           final user = snapshot.data;
@@ -108,8 +104,13 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        user.bio.isNotEmpty ? user.bio : user.userType.toUpperCase(),
-                        style: const TextStyle(fontSize: 14, color: Colors.white),
+                        user.bio.isNotEmpty
+                            ? user.bio
+                            : user.userType.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       if (user.skills.isNotEmpty) ...[

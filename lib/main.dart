@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get_it/get_it.dart';
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
@@ -14,18 +12,22 @@ import 'services/payment_service.dart';
 import 'services/review_service.dart';
 import 'services/ai_service.dart';
 import 'services/recommendation_service.dart';
+import 'services/supabase_service.dart';
+import 'services/supabase_auth_service.dart';
+import 'services/supabase_database_service.dart';
+import 'services/supabase_storage_service.dart';
 
 final getIt = GetIt.instance;
-
-// Background message handler (must be top-level function)
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  print('Handling background message: ${message.messageId}');
-}
+final supabaseService = SupabaseService();
 
 /// Setup all service dependencies (Dependency Injection)
 void _setupServiceLocator() {
+  // Register Supabase services
+  getIt.registerSingleton<SupabaseService>(supabaseService);
+  getIt.registerSingleton<SupabaseAuthService>(SupabaseAuthService());
+  getIt.registerSingleton<SupabaseDatabaseService>(SupabaseDatabaseService());
+  getIt.registerSingleton<SupabaseStorageService>(SupabaseStorageService());
+
   // Register Tier 1 feature services
   getIt.registerSingleton<ChatService>(ChatService());
   getIt.registerSingleton<VideoConsultationService>(VideoConsultationService());
@@ -39,22 +41,24 @@ void _setupServiceLocator() {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp();
-
-  // Enable Firestore offline persistence
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
-
-  // Initialize FCM background handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // Initialize Supabase
+  // ⚠️ IMPORTANT: Replace with your actual Supabase credentials
+  // Get from: https://app.supabase.com → Project Settings → API
+  try {
+    await supabaseService.initialize(
+      supabaseUrl: 'YOUR_SUPABASE_URL', // e.g., https://xxxxx.supabase.co
+      supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY',
+    );
+    print('✅ Supabase initialized successfully');
+  } catch (e) {
+    print('❌ Failed to initialize Supabase: $e');
+    // Continue anyway - will fail on API calls
+  }
 
   // Initialize notification service
   await NotificationService().initialize();
 
-  // Setup Service Locator for Tier 1 features
+  // Setup Service Locator for Tier 1 features and Supabase
   _setupServiceLocator();
 
   // Log configuration (development only)
@@ -63,7 +67,7 @@ Future<void> main() async {
   // Validate API keys
   if (!AppConfig.validateApiKeys()) {
     if (AppConfig.enableDetailedLogging) {
-      print('⚠️ Using mock data for unconfonfigured APIs');
+      print('⚠️ Using mock data for unconfigured APIs');
     }
   }
 

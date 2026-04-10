@@ -86,7 +86,9 @@ class NotificationsScreen extends StatelessWidget {
                 notification: notification,
                 onTap: () async {
                   if (!notification.read) {
-                    await firestoreService.markNotificationAsRead(notification.id);
+                    await firestoreService.markNotificationAsRead(
+                      notification.id,
+                    );
                   }
                 },
               );
@@ -102,10 +104,7 @@ class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
   final VoidCallback onTap;
 
-  const _NotificationCard({
-    required this.notification,
-    required this.onTap,
-  });
+  const _NotificationCard({required this.notification, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +141,9 @@ class _NotificationCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: notification.read ? Colors.white : AppColors.background.withValues(alpha: 0.5),
+      color: notification.read
+          ? Colors.white
+          : AppColors.background.withValues(alpha: 0.5),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(

@@ -60,9 +60,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
     final userId = _authService.currentUserId;
 
     if (userId == null) {
-      return const Center(
-        child: Text('Please sign in to view projects'),
-      );
+      return const Center(child: Text('Please sign in to view projects'));
     }
 
     return StreamBuilder<List<ProjectModel>>(
@@ -98,14 +96,16 @@ class _ProjectsScreenState extends State<ProjectsScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  status == 'completed' ? Icons.check_circle_outline : Icons.work_outline,
+                  status == 'completed'
+                      ? Icons.check_circle_outline
+                      : Icons.work_outline,
                   size: 64,
                   color: Colors.grey,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  status == 'completed' 
-                      ? 'No completed projects yet' 
+                  status == 'completed'
+                      ? 'No completed projects yet'
                       : 'No pending projects',
                   style: const TextStyle(fontSize: 18, color: Colors.grey),
                 ),
@@ -178,8 +178,8 @@ class _ProjectsScreenState extends State<ProjectsScreen>
                         'Status: ${project.status.toUpperCase()}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: project.status == 'completed' 
-                              ? AppColors.success 
+                          color: project.status == 'completed'
+                              ? AppColors.success
                               : AppColors.warning,
                           fontWeight: FontWeight.w500,
                         ),
@@ -247,7 +247,10 @@ class _ProjectsScreenState extends State<ProjectsScreen>
                 runSpacing: 8,
                 children: project.skills.take(3).map((skill) {
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.pinkBackground,
                       borderRadius: BorderRadius.circular(16),

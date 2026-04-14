@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shecan_ai/screens/guest_screens/guest_main_screen.dart';
 import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
-import 'complete_profile_screen.dart';
-import 'main_navigation_screen.dart';
+import 'client_screens/client_main.dart';
+import 'women_screens/women_main.dart';
 
 class SignInScreen extends StatefulWidget {
   final String userType;
@@ -17,93 +18,17 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
   final _formKey = GlobalKey<FormState>();
+
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
-
-  Future<void> _handleAuth() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    final isSignIn = _tabController.index == 0;
-    final authService = AuthService();
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      if (isSignIn) {
-        await authService.signInWithEmail(
-          email: email,
-          password: password,
-        );
-      } else {
-        // Create account with user document in Firestore
-        await authService.signUpWithEmail(
-          email: email,
-          password: password,
-          displayName: email.split('@')[0], // Temporary, will be updated in profile
-          userType: widget.userType,
-        );
-      }
-
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => isSignIn
-              ? const MainNavigationScreen()
-              : const CompleteProfileScreen(),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  String _authErrorMessage(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'Please enter a valid email address.';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Invalid email or password.';
-      case 'email-already-in-use':
-        return 'An account already exists with this email.';
-      case 'weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'network-request-failed':
-        return 'Network error. Check your internet connection.';
-      default:
-        return e.message ?? 'Authentication failed. Please try again.';
-    }
-  }
 
   @override
   void initState() {
@@ -114,148 +39,215 @@ class _SignInScreenState extends State<SignInScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  Future<void> _handleAuth() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final isSignIn = _tabController.index == 0;
+
+    final authService = AuthService();
+
+    setState(() => _isLoading = true);
+
+    try {
+      if (isSignIn) {
+        await authService.signInWithEmail(email: email, password: password);
+      } else {
+        await authService.signUpWithEmail(
+          email: email,
+          password: password,
+          displayName:
+              "${_firstNameController.text} ${_lastNameController.text}",
+          userType: widget.userType,
+        );
+      }
+
+      if (!mounted) return;
+
+      Widget nextScreen;
+
+      // ================= NAVIGATION LOGIC =================
+
+      if (widget.userType == "Client") {
+        nextScreen = const ClientMainScreen();
+      } else if (widget.userType == "Women") {
+        nextScreen = const MentorMainNav();
+      } else {
+        nextScreen = const GuestMainScreen();
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => nextScreen),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_authErrorMessage(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ================= ERROR HANDLING =================
+
+  String _authErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'Invalid email';
+      case 'user-not-found':
+      case 'wrong-password':
+        return 'Wrong credentials';
+      case 'email-already-in-use':
+        return 'Email already exists';
+      default:
+        return 'Something went wrong';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isSignUp = _tabController.index == 1;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
+
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, color: AppColors.primary),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
       ),
+
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Title
+              // ================= TITLE =================
               const Text(
-                'Sign In or Create Account',
+                'Welcome to SheCan',
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
-                textAlign: TextAlign.center,
               ),
+
               const SizedBox(height: 8),
+
               const Text(
-                'Get started or continue to SheCan',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
+                'Sign in or create account',
+                style: TextStyle(color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 40),
+
+              const SizedBox(height: 30),
+
+              //  TabBar
               Container(
+                height: 55,
                 decoration: BoxDecoration(
-                  color: AppColors.pinkBackground,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: TabBar(
                   controller: _tabController,
                   indicator: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  indicatorPadding: const EdgeInsets.symmetric(horizontal: 12),
                   labelColor: Colors.white,
                   unselectedLabelColor: AppColors.textPrimary,
                   tabs: const [
-                    Tab(text: 'Sign In'),
-                    Tab(text: 'Sign Up'),
+                    Tab(
+                      child: SizedBox(
+                        width: 120,
+                        child: Center(child: Text('Sign In')),
+                      ),
+                    ),
+                    Tab(
+                      child: SizedBox(
+                        width: 120,
+                        child: Center(child: Text('Sign Up')),
+                      ),
+                    ),
                   ],
                   onTap: (_) => setState(() {}),
                 ),
               ),
-              const SizedBox(height: 24),
-              // Form
+
+              const SizedBox(height: 30),
+
+              // ================= FORM =================
               Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Email Field
-                    const Text(
-                      'Email Address',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
+                    if (isSignUp) ...[
+                      TextFormField(
+                        controller: _firstNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'First Name',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _lastNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'Last Name',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          hintText: 'Phone Number',
+                          prefixIcon: Icon(Icons.phone_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     TextFormField(
                       controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                        hintText: 'Enter your email',
+                        hintText: 'Email',
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Please enter a valid email address';
-                        }
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 20),
-                    // Phone Number
-                    const Text(
-                      'Phone Number',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter your phone number',
-                        prefixIcon: Icon(Icons.phone_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Password
-                    const Text(
-                      'Password',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+
+                    const SizedBox(height: 16),
+
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        hintText: 'Enter your password',
+                        hintText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outlined),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
@@ -264,100 +256,91 @@ class _SignInScreenState extends State<SignInScreen>
                           },
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your password';
-                        }
-                        if (value.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 30),
-                    // Sign In Button
+
+                    const SizedBox(height: 25),
+
+                    // ================= BUTTON =================
                     SizedBox(
                       width: double.infinity,
+                      height: 50,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleAuth,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                         child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
                               )
-                            : Text(
-                                _tabController.index == 0
-                                    ? 'Sign In'
-                                    : 'Create Account',
-                              ),
+                            : Text(isSignUp ? 'Create Account' : 'Sign In'),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Or Continue with
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'or continue with',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Social Login Options
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.g_mobiledata, size: 28),
-                            label: const Text('Google'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.apple, size: 24),
-                            label: const Text('Apple'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
-              // Footer
-              Center(
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'Explore as a Guest',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+
+              const SizedBox(height: 20),
+
+              // ================= DIVIDER =================
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'or continue with',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
+                  ),
+                  const Expanded(child: Divider()),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // ================= SOCIAL LOGIN =================
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.g_mobiledata),
+                      label: const Text("Google"),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.apple),
+                      label: const Text("Apple"),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // ================= GUEST =================
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GuestMainScreen()),
+                  );
+                },
+                child: const Text(
+                  "Explore as a Guest",
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

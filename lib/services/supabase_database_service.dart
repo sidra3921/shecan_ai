@@ -15,14 +15,175 @@ class SupabaseDatabaseService {
 
   final _supabase = Supabase.instance.client;
 
+  List<ProjectModel> _mapProjects(List<dynamic> rows) {
+    return rows
+        .map((item) => ProjectModel.fromMap(item as Map<String, dynamic>, item['id']))
+        .toList();
+  }
+
+  Future<List<ProjectModel>> _fetchClientProjects(String clientId) async {
+    final rows = await _supabase
+        .from('projects')
+        .select()
+        .eq('client_id', clientId)
+        .order('created_at', ascending: false);
+
+    return _mapProjects(rows as List<dynamic>);
+  }
+
+  Future<List<ProjectModel>> _fetchFreelancerProjects(String freelancerId) async {
+    final rows = await _supabase
+        .from('projects')
+        .select()
+        .eq('freelancer_id', freelancerId)
+        .order('created_at', ascending: false);
+
+    return _mapProjects(rows as List<dynamic>);
+  }
+
   // ==================== USER OPERATIONS ====================
+
+  String? _extractMissingColumn(String message) {
+    final match = RegExp(r"Could not find the '([^']+)' column")
+        .firstMatch(message);
+    return match?.group(1);
+  }
+
+  Future<void> _upsertUserWithPrunedColumns(Map<String, dynamic> payload) async {
+    final working = Map<String, dynamic>.from(payload);
+
+    for (var i = 0; i < 12; i++) {
+      try {
+        await _supabase.from('users').upsert(working, onConflict: 'id');
+        return;
+      } on PostgrestException catch (e) {
+        final missingColumn = _extractMissingColumn(e.message);
+        if (missingColumn == null || !working.containsKey(missingColumn)) {
+          rethrow;
+        }
+        working.remove(missingColumn);
+      }
+    }
+
+    throw Exception('Failed to save user after removing unsupported columns');
+  }
+
+  Future<void> _updateUserWithPrunedColumns(
+    String userId,
+    Map<String, dynamic> payload,
+  ) async {
+    final working = Map<String, dynamic>.from(payload);
+
+    for (var i = 0; i < 12; i++) {
+      try {
+        await _supabase.from('users').update(working).eq('id', userId);
+        return;
+      } on PostgrestException catch (e) {
+        final missingColumn = _extractMissingColumn(e.message);
+        if (missingColumn == null || !working.containsKey(missingColumn)) {
+          rethrow;
+        }
+        working.remove(missingColumn);
+      }
+    }
+
+    throw Exception('Failed to update user after removing unsupported columns');
+  }
+
+  Future<Map<String, dynamic>> _insertProjectWithPrunedColumns(
+    Map<String, dynamic> payload,
+  ) async {
+    return _insertWithPrunedColumns('projects', payload);
+  }
+
+  Future<void> _updateProjectWithPrunedColumns(
+    String projectId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _updateWithPrunedColumns('projects', projectId, payload);
+  }
+
+  Future<Map<String, dynamic>> _insertWithPrunedColumns(
+    String table,
+    Map<String, dynamic> payload,
+  ) async {
+    final working = Map<String, dynamic>.from(payload);
+
+    for (var i = 0; i < 16; i++) {
+      try {
+        return await _supabase.from(table).insert(working).select().single();
+      } on PostgrestException catch (e) {
+        final missingColumn = _extractMissingColumn(e.message);
+        if (missingColumn == null || !working.containsKey(missingColumn)) {
+          rethrow;
+        }
+        print('Pruned unsupported column "$missingColumn" from $table payload');
+        working.remove(missingColumn);
+      }
+    }
+
+    throw Exception('Failed to insert into $table after removing unsupported columns');
+  }
+
+  Future<void> _updateWithPrunedColumns(
+    String table,
+    String id,
+    Map<String, dynamic> payload,
+  ) async {
+    final working = Map<String, dynamic>.from(payload);
+
+    for (var i = 0; i < 16; i++) {
+      try {
+        await _supabase.from(table).update(working).eq('id', id);
+        return;
+      } on PostgrestException catch (e) {
+        final missingColumn = _extractMissingColumn(e.message);
+        if (missingColumn == null || !working.containsKey(missingColumn)) {
+          rethrow;
+        }
+        print('Pruned unsupported column "$missingColumn" from $table payload');
+        working.remove(missingColumn);
+      }
+    }
+
+    throw Exception('Failed to update $table after removing unsupported columns');
+  }
+
+  Map<String, dynamic> _toLegacyUserKeys(Map<String, dynamic> input) {
+    final mapped = <String, dynamic>{};
+    const keyMap = {
+      'display_name': 'displayName',
+      'photo_url': 'photoURL',
+      'user_type': 'userType',
+      'hourly_rate': 'hourlyRate',
+      'completed_projects': 'completedProjects',
+      'total_earnings': 'totalEarnings',
+      'total_reviews': 'totalReviews',
+      'created_at': 'createdAt',
+      'updated_at': 'updatedAt',
+    };
+
+    for (final entry in input.entries) {
+      final key = keyMap[entry.key] ?? entry.key;
+      mapped[key] = entry.value;
+    }
+    return mapped;
+  }
 
   /// Create or update user profile
   Future<void> saveUser(UserModel user) async {
-    await _supabase.from('users').upsert(
-      user.toMap(),
-      onConflict: 'id',
-    );
+    final payload = user.toMap();
+    try {
+      await _upsertUserWithPrunedColumns(payload);
+    } on PostgrestException catch (e) {
+      // Fallback for projects still using camelCase columns.
+      if (e.message.contains("Could not find") && e.message.contains("column")) {
+        final legacyPayload = _toLegacyUserKeys(payload);
+        await _upsertUserWithPrunedColumns(legacyPayload);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   /// Get user by ID
@@ -38,6 +199,24 @@ class SupabaseDatabaseService {
       return UserModel.fromMap(data, userId);
     } catch (e) {
       print('Error fetching user: $e');
+      return null;
+    }
+  }
+
+  /// Get user by email
+  Future<UserModel?> getUserByEmail(String email) async {
+    try {
+      final data = await _supabase
+          .from('users')
+          .select()
+          .eq('email', email.trim().toLowerCase())
+          .limit(1)
+          .maybeSingle();
+
+      if (data == null) return null;
+      return UserModel.fromMap(data, data['id'] as String);
+    } catch (e) {
+      print('Error fetching user by email: $e');
       return null;
     }
   }
@@ -87,20 +266,30 @@ class SupabaseDatabaseService {
 
   /// Update user profile
   Future<void> updateUser(String userId, Map<String, dynamic> updates) async {
-    updates['updated_at'] = DateTime.now().toIso8601String();
-    await _supabase.from('users').update(updates).eq('id', userId);
+    final payload = <String, dynamic>{
+      ...updates,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    try {
+      await _updateUserWithPrunedColumns(userId, payload);
+    } on PostgrestException catch (e) {
+      // Fallback for projects still using camelCase columns.
+      if (e.message.contains("Could not find") && e.message.contains("column")) {
+        final legacyPayload = _toLegacyUserKeys(payload);
+        await _updateUserWithPrunedColumns(userId, legacyPayload);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   // ==================== PROJECT OPERATIONS ====================
 
   /// Create new project
   Future<String> createProject(ProjectModel project) async {
-    final response = await _supabase
-        .from('projects')
-        .insert(project.toMap())
-        .select();
-    
-    return response.first['id'] as String;
+    final response = await _insertProjectWithPrunedColumns(project.toMap());
+    return response['id'] as String;
   }
 
   /// Get project by ID
@@ -125,46 +314,61 @@ class SupabaseDatabaseService {
     String projectId,
     Map<String, dynamic> updates,
   ) async {
-    updates['updated_at'] = DateTime.now().toIso8601String();
-    await _supabase.from('projects').update(updates).eq('id', projectId);
+    final payload = <String, dynamic>{
+      ...updates,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    await _updateProjectWithPrunedColumns(projectId, payload);
   }
 
   /// Get projects by client
   Stream<List<ProjectModel>> streamClientProjects(String clientId) {
-    return _supabase
-        .from('projects')
-        .stream(primaryKey: ['id'])
-        .eq('client_id', clientId)
-        .map((data) {
-          return (data as List)
-              .map((item) => ProjectModel.fromMap(item, item['id']))
-              .toList();
-        });
+    return (() async* {
+      // Always provide initial data, even if realtime subscription times out.
+      yield await _fetchClientProjects(clientId);
+
+      try {
+        yield* _supabase
+            .from('projects')
+            .stream(primaryKey: ['id'])
+            .eq('client_id', clientId)
+            .order('created_at', ascending: false)
+            .map((data) => _mapProjects(data as List<dynamic>));
+      } catch (e) {
+        print('Client project realtime stream failed, using polling fallback: $e');
+        yield* Stream.periodic(const Duration(seconds: 12))
+            .asyncMap((_) => _fetchClientProjects(clientId));
+      }
+    })();
   }
 
   /// Get projects by freelancer
   Stream<List<ProjectModel>> streamFreelancerProjects(String freelancerId) {
-    return _supabase
-        .from('projects')
-        .stream(primaryKey: ['id'])
-        .eq('freelancer_id', freelancerId)
-        .map((data) {
-          return (data as List)
-              .map((item) => ProjectModel.fromMap(item, item['id']))
-              .toList();
-        });
+    return (() async* {
+      // Always provide initial data, even if realtime subscription times out.
+      yield await _fetchFreelancerProjects(freelancerId);
+
+      try {
+        yield* _supabase
+            .from('projects')
+            .stream(primaryKey: ['id'])
+            .eq('freelancer_id', freelancerId)
+            .order('created_at', ascending: false)
+            .map((data) => _mapProjects(data as List<dynamic>));
+      } catch (e) {
+        print('Freelancer project realtime stream failed, using polling fallback: $e');
+        yield* Stream.periodic(const Duration(seconds: 12))
+            .asyncMap((_) => _fetchFreelancerProjects(freelancerId));
+      }
+    })();
   }
 
   // ==================== MESSAGE OPERATIONS ====================
 
   /// Send message
   Future<String> sendMessage(MessageModel message) async {
-    final response = await _supabase
-        .from('messages')
-        .insert(message.toMap())
-        .select();
-    
-    return response.first['id'] as String;
+    final response = await _insertWithPrunedColumns('messages', message.toMap());
+    return response['id'] as String;
   }
 
   /// Get chat messages
@@ -189,7 +393,7 @@ class SupabaseDatabaseService {
 
   /// Create notification
   Future<void> createNotification(NotificationModel notification) async {
-    await _supabase.from('notifications').insert(notification.toMap());
+    await _insertWithPrunedColumns('notifications', notification.toMap());
   }
 
   /// Get user notifications
@@ -218,12 +422,8 @@ class SupabaseDatabaseService {
 
   /// Create payment
   Future<String> createPayment(PaymentModel payment) async {
-    final response = await _supabase
-        .from('payments')
-        .insert(payment.toMap())
-        .select();
-    
-    return response.first['id'] as String;
+    final response = await _insertWithPrunedColumns('payments', payment.toMap());
+    return response['id'] as String;
   }
 
   /// Get payment by ID
@@ -260,12 +460,8 @@ class SupabaseDatabaseService {
 
   /// Create dispute
   Future<String> createDispute(DisputeModel dispute) async {
-    final response = await _supabase
-        .from('disputes')
-        .insert(dispute.toMap())
-        .select();
-    
-    return response.first['id'] as String;
+    final response = await _insertWithPrunedColumns('disputes', dispute.toMap());
+    return response['id'] as String;
   }
 
   /// Get dispute by ID
@@ -289,12 +485,8 @@ class SupabaseDatabaseService {
 
   /// Create review
   Future<String> createReview(ReviewModel review) async {
-    final response = await _supabase
-        .from('reviews')
-        .insert(review.toMap())
-        .select();
-    
-    return response.first['id'] as String;
+    final response = await _insertWithPrunedColumns('reviews', review.toMap());
+    return response['id'] as String;
   }
 
   /// Get reviews for user
@@ -338,7 +530,7 @@ class SupabaseDatabaseService {
     bool ascending = true,
     int? limit,
   }) async {
-    var query = _supabase.from(table).select(select?.join(',') ?? '*');
+    dynamic query = _supabase.from(table).select(select?.join(',') ?? '*');
 
     if (filters != null) {
       filters.forEach((key, value) {
@@ -362,7 +554,7 @@ class SupabaseDatabaseService {
     String table,
     Map<String, dynamic> data,
   ) async {
-    return await _supabase.from(table).insert(data).select().single();
+    return _insertWithPrunedColumns(table, data);
   }
 
   /// Generic update
@@ -371,7 +563,7 @@ class SupabaseDatabaseService {
     String id,
     Map<String, dynamic> data,
   ) async {
-    await _supabase.from(table).update(data).eq('id', id);
+    await _updateWithPrunedColumns(table, id, data);
   }
 
   /// Generic delete

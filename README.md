@@ -1,290 +1,76 @@
-# SheCan AI - Empowering Women to Earn, Learn and Empower
+﻿# SheCan AI
 
-A beautiful, responsive Flutter application designed to connect women freelancers, mentors, and clients. Built with a modern pink-themed UI and comprehensive features for project management, payments, analytics, and more.
+SheCan AI is an AI-powered skill-matching and micro-gig platform designed exclusively for women in Pakistan.
 
-## 🌟 Features
+Many women possess valuable home-based skills, such as tailoring, handicrafts, baking, tutoring, and digital services, yet they often lack access to safe, supportive, and trustworthy marketplaces to monetize them. SheCan AI addresses this gap by enabling women to build skill-based profiles, showcase portfolios, and receive AI-driven recommendations for suitable micro-projects.
 
-### Authentication & Onboarding
-- **Splash Screen** - Beautiful branded splash screen with app logo
-- **User Type Selection** - Choose between Mentor and Client roles
-- **Sign In/Create Account** - Complete authentication with email, phone, and social login options
-- **Profile Completion** - Set up user profiles with photo upload and professional details
+The platform uses intelligent matching algorithms to connect women with verified clients, while supporting secure in-app payments, transparent reviews, and mentorship opportunities.
 
-### Main Features
-- **Dashboard** - Comprehensive overview with statistics, charts, and analytics
-- **Project Management** - View and manage projects with status tracking and progress bars
-- **Post Projects** - Create new project listings with detailed information
-- **Best Matches** - Find and connect with talented professionals
-- **Wellness Content** - Access educational content and resources
-- **Payments** - Track earnings, pending payments, and financial projections
-- **Analytics** - Detailed analytics dashboard with charts and insights
-- **Messages** - Communication system for client-mentor interaction
-- **Settings** - Comprehensive settings for notifications, privacy, and account management
-- **Disputes** - Manage and resolve project disputes
+By combining empowerment through technology, localized opportunities, and a women-friendly digital environment, SheCan AI bridges the gap between women’s skills and real market demand. The mission is to increase women’s participation in Pakistan’s digital economy while fostering financial independence and long-term skill growth.
 
-### UI/UX Highlights
-- ✨ Modern pink-themed design
-- 📱 Fully responsive layout
-- 🎨 Beautiful gradient cards and charts
-- 📊 Interactive charts using FL Chart
-- 🔔 Notification system
-- 💳 Payment tracking
-- 📈 Progress indicators
-- 🎯 Bottom navigation for easy access
+## Methodology
 
-## 🛠 Tech Stack
+### 1. User Selection Phase
 
-- **Framework**: Flutter 3.8.1+
-- **Language**: Dart
-- **State Management**: Provider
-- **Backend**: Firebase
-  - Firebase Authentication
-  - Cloud Firestore (Database)
-  - Firebase Storage (File Storage)
-  - Cloud Messaging (Notifications)
-- **Charts**: FL Chart
-- **UI Components**: 
-  - Percent Indicator
-  - Image Picker
-  - Custom widgets
+The workflow starts with role selection. A user chooses whether she is joining as:
 
-## 📦 Dependencies
+- Client
+- Woman Service Provider (Mentor/Freelancer)
 
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  cupertino_icons: ^1.0.8
-  provider: ^6.1.1
-  fl_chart: ^0.68.0
-  percent_indicator: ^4.2.3
-  image_picker: ^1.0.7
-  intl: ^0.19.0
-  shared_preferences: ^2.2.2
-  
-  # Firebase Backend
-  firebase_core: ^4.5.0
-  firebase_auth: ^6.2.0
-  cloud_firestore: ^5.7.0
-  firebase_storage: ^12.5.0
-  firebase_messaging: ^15.2.0
-  firebase_analytics: ^11.5.0
-```
+This role selection controls both feature access and platform behavior.
 
-## 🚀 Getting Started
+### 2. Client Journey
 
-### Prerequisites
-- Flutter SDK (3.8.1 or higher)
-- Dart SDK
-- Android Studio / VS Code
-- Android/iOS emulator or physical device
+If the user selects Client, the flow is:
 
-### Installation
+1. Login/signup
+2. Preference and interest analysis (favorites, selected categories, location)
+3. AI-powered gig recommendations (tailoring, crafts, coaching, baking, digital services, and related categories)
+4. Provider discovery and trust checks (profile, portfolio, ratings, reviews)
+5. Direct order placement through the platform
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/shecan_ai.git
-   cd shecan_ai
-   ```
+### 3. Woman Service Provider Journey
 
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
+If the user selects Woman Service Provider, the flow is:
 
-3. **Setup Firebase Backend** 
-   
-   **Quick Setup:**
-   - Create `lib/services` directory
-   - Copy service files from root (see **QUICK_START_FIREBASE.md**)
-   - Follow **FIREBASE_SETUP.md** for Firebase Console configuration
-   
-   **Detailed Documentation:**
-   - 📖 **[BACKEND_SUMMARY.md](BACKEND_SUMMARY.md)** - Complete backend overview
-   - 🚀 **[QUICK_START_FIREBASE.md](QUICK_START_FIREBASE.md)** - Quick setup guide with examples
-   - ⚙️ **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Detailed Firebase configuration
+1. Login/signup with provider role
+2. Build a skill-based profile (skills, bio, pricing, location, portfolio)
+3. Receive AI-recommended micro-gig opportunities based on skills and relevance
+4. Track gig activity (saved gigs, viewed gigs, applied interest)
+5. Communicate with clients through in-app channels
+6. Deliver services and build trust through verified reviews and ratings
+7. Improve long-term growth through mentorship opportunities and continuous profile strengthening
 
-4. **Run the app**
-   ```bash
-   # For Android
-   flutter run
+### 4. Trust, Safety, and Role Separation
 
-   # For iOS
-   flutter run -d ios
+The platform follows strict role isolation and safety-first behavior:
 
-   # For Windows
-   flutter run -d windows
+- One email account is locked to one role type
+- Client and provider features are separated by role
+- Sensitive data access is restricted through backend policies
+- In-app interactions prioritize transparency and user safety
 
-   # For Web
-   flutter run -d chrome
-   ```
+### 5. AI Matching Logic (Platform Intent)
 
-## 📱 Screens
+AI matching is designed to optimize relevance and outcomes by combining:
 
-### Authentication Flow
-1. Splash Screen
-2. User Type Selection (Mentor/Client)
-3. Sign In / Create Account
-4. Complete Profile
+- Skill compatibility
+- Category fit
+- User preferences and interest signals
+- Location relevance where required
+- Quality indicators (ratings/reviews)
 
-### Main Application
-1. **Home (Dashboard)**
-   - Statistics cards
-   - User growth charts
-   - Project completion charts
-   - Revenue charts
-   - Skills distribution
+## Product Pillars
 
-2. **Projects**
-   - Completed projects tab
-   - Pending projects tab
-   - Project cards with progress
-   - Budget and deadline tracking
+- Safe and women-friendly digital marketplace
+- AI-based skill and gig matching
+- Verified clients and trust-first interactions
+- Secure transactions and transparent feedback
+- Mentorship and long-term capability building
 
-3. **Post Project**
-   - Project creation form
-   - Category selection
-   - Budget input
-   - Duration selection
+## Current Role Model (Implemented)
 
-4. **Notifications**
-   - Real-time notifications
-   - Activity tracking
-   - Action buttons
-
-5. **Profile**
-   - User information
-   - Statistics
-   - Settings access
-   - Menu items
-
-### Additional Screens
-- Analytics Dashboard
-- Project Management (Table View)
-- Disputes Management
-- Payments & Wallet
-- Best Matches/Talent Discovery
-- Wellness Content
-- Messages/Chat
-- Settings
-
-## 🎨 Design System
-
-### Colors
-- **Primary**: `#E91E63` (Pink)
-- **Primary Light**: `#F8BBD0`
-- **Primary Dark**: `#C2185B`
-- **Success**: `#4CAF50`
-- **Warning**: `#FFC107`
-- **Error**: `#F44336`
-- **Info**: `#2196F3`
-
-### Typography
-- **Display Large**: 32px, Bold
-- **Display Medium**: 28px, Bold
-- **Headline**: 20px, Semi-bold
-- **Body**: 16px, Regular
-- **Caption**: 12px, Regular
-
-## 📂 Project Structure
-
-```
-lib/
-├── constants/
-│   ├── app_colors.dart
-│   └── app_theme.dart
-├── models/
-│   ├── user_model.dart
-│   ├── project_model.dart
-│   ├── message_model.dart
-│   ├── notification_model.dart
-│   ├── payment_model.dart
-│   ├── dispute_model.dart
-│   └── review_model.dart
-├── services/
-│   ├── firestore_service.dart
-│   ├── storage_service.dart
-│   ├── notification_service.dart
-│   └── auth_service.dart
-├── screens/
-│   ├── splash_screen.dart
-│   ├── user_type_screen.dart
-│   ├── sign_in_screen.dart
-│   ├── complete_profile_screen.dart
-│   ├── main_navigation_screen.dart
-│   ├── dashboard_screen.dart
-│   ├── projects_screen.dart
-│   ├── post_project_screen.dart
-│   ├── notifications_screen.dart
-│   ├── profile_screen.dart
-│   ├── best_matches_screen.dart
-│   ├── wellness_content_screen.dart
-│   ├── project_management_screen.dart
-│   ├── disputes_screen.dart
-│   ├── payments_screen.dart
-│   ├── analytics_screen.dart
-│   ├── settings_screen.dart
-│   └── messages_screen.dart
-├── widgets/
-└── main.dart
-```
-
-## 🔧 Customization
-
-### Changing Theme Colors
-Edit [lib/constants/app_colors.dart](lib/constants/app_colors.dart):
-```dart
-static const Color primary = Color(0xFFE91E63); // Change to your color
-```
-
-### Adding New Screens
-1. Create a new file in `lib/screens/`
-2. Import necessary packages
-3. Create a StatelessWidget or StatefulWidget
-4. Add navigation in the appropriate screen
-
-## 📝 Features Roadmap
-
-- [x] **Backend integration** ✅ (Firebase Firestore, Storage, Messaging)
-- [x] **Real-time data synchronization** ✅ (Firestore streams)
-- [x] **Offline support** ✅ (Automatic with Firestore)
-- [x] **Push notifications** ✅ (Firebase Cloud Messaging)
-- [x] **File storage** ✅ (Firebase Storage)
-- [x] **User authentication** ✅ (Firebase Auth)
-- [ ] Real-time chat UI integration
-- [ ] Payment gateway integration
-- [ ] Cloud Functions (automated tasks)
-- [ ] Advanced analytics dashboard
-- [ ] Multi-language support
-- [ ] Dark mode
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 👏 Acknowledgments
-
-- Design inspired by modern freelancing platforms
-- Built with Flutter and love for women empowerment
-- Icons from Material Design Icons
-
-## 📞 Contact
-
-For any queries or support, please reach out:
-- Email: support@shecan.ai
-- Website: https://shecan.ai
-
----
-
-**Made with ❤️ for empowering women worldwide**
-
+- Mentor and client accounts are separated by role.
+- A single email is locked to one role type.
+- Client and mentor navigation/features are role-gated.
+- Backend hardening script is provided in SUPABASE_RLS_HARDENING.sql.

@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ProjectModel {
   final String id;
   final String title;
@@ -57,10 +55,10 @@ class ProjectModel {
       'title': title,
       'description': description,
       'budget': budget,
-      'deadline': Timestamp.fromDate(deadline),
+      'deadline': deadline.toIso8601String(),
       'status': status,
-      'clientId': clientId,
-      'mentorId': mentorId,
+      'client_id': clientId,
+      'freelancer_id': mentorId,
       'skills': skills,
       'progress': progress,
       'latitude': latitude,
@@ -69,10 +67,10 @@ class ProjectModel {
       'country': country,
       'address': address,
       'category': category,
-      'experienceLevel': experienceLevel,
-      'isUrgent': isUrgent,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
+      'experience_level': experienceLevel,
+      'is_urgent': isUrgent,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
@@ -82,10 +80,10 @@ class ProjectModel {
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       budget: (map['budget'] ?? 0.0).toDouble(),
-      deadline: (map['deadline'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      deadline: _parseDateTime(map['deadline']) ?? DateTime.now(),
       status: map['status'] ?? 'pending',
-      clientId: map['clientId'] ?? '',
-      mentorId: map['mentorId'],
+      clientId: map['client_id'] ?? map['clientId'] ?? '',
+      mentorId: map['freelancer_id'] ?? map['mentorId'],
       skills: List<String>.from(map['skills'] ?? []),
       progress: map['progress'] ?? 0,
       latitude: map['latitude']?.toDouble(),
@@ -94,11 +92,27 @@ class ProjectModel {
       country: map['country'],
       address: map['address'],
       category: map['category'],
-      experienceLevel: map['experienceLevel'],
-      isUrgent: map['isUrgent'] ?? false,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      experienceLevel: map['experience_level'] ?? map['experienceLevel'],
+      isUrgent: map['is_urgent'] ?? map['isUrgent'] ?? false,
+      createdAt:
+          _parseDateTime(map['created_at'] ?? map['createdAt']) ??
+          DateTime.now(),
+      updatedAt:
+          _parseDateTime(map['updated_at'] ?? map['updatedAt']) ??
+          DateTime.now(),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   ProjectModel copyWith({

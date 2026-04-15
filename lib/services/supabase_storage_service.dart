@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
+import 'dart:typed_data';
 
 class SupabaseStorageService {
   static final SupabaseStorageService _instance =
@@ -23,8 +24,7 @@ class SupabaseStorageService {
     required File imageFile,
   }) async {
     try {
-      final fileName = 'profile_$userId.jpg';
-      final filePath = 'profile_photos/$fileName';
+      final filePath = '$userId/profile.jpg';
 
       // Delete old photo if exists
       try {
@@ -51,10 +51,33 @@ class SupabaseStorageService {
     }
   }
 
+  /// Upload user profile photo from bytes (web-friendly)
+  Future<String> uploadProfilePhotoBytes({
+    required String userId,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final filePath = '$userId/profile.jpg';
+
+      try {
+        await _supabase.storage.from(profilePhotosBucket).remove([filePath]);
+      } catch (_) {
+        // File might not exist, ignore error
+      }
+
+      await _supabase.storage
+          .from(profilePhotosBucket)
+          .uploadBinary(filePath, bytes);
+
+      return _supabase.storage.from(profilePhotosBucket).getPublicUrl(filePath);
+    } catch (e) {
+      throw Exception('Failed to upload profile photo: $e');
+    }
+  }
+
   /// Get profile photo URL
   String getProfilePhotoUrl(String userId) {
-    final fileName = 'profile_$userId.jpg';
-    final filePath = 'profile_photos/$fileName';
+    final filePath = '$userId/profile.jpg';
     return _supabase.storage
         .from(profilePhotosBucket)
         .getPublicUrl(filePath);
@@ -63,8 +86,7 @@ class SupabaseStorageService {
   /// Delete profile photo
   Future<void> deleteProfilePhoto(String userId) async {
     try {
-      final fileName = 'profile_$userId.jpg';
-      final filePath = 'profile_photos/$fileName';
+      final filePath = '$userId/profile.jpg';
       await _supabase.storage
           .from(profilePhotosBucket)
           .remove([filePath]);

@@ -8,7 +8,7 @@ class AuthService {
   AuthService._internal();
 
   @deprecated
-  User? get currentUser => throw UnsupportedError('Use SupabaseAuthService instead');
+  Object? get currentUser => throw UnsupportedError('Use SupabaseAuthService instead');
   
   @deprecated
   String? get currentUserId => throw UnsupportedError('Use SupabaseAuthService instead');

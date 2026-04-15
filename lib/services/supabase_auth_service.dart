@@ -11,6 +11,20 @@ class SupabaseAuthService {
   final _supabase = Supabase.instance.client;
   final _dbService = SupabaseDatabaseService();
 
+  String _normalizeUserType(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'mentor' || normalized == 'client') {
+      return normalized;
+    }
+    return normalized;
+  }
+
+  String _prettyUserType(String value) {
+    final normalized = _normalizeUserType(value);
+    if (normalized.isEmpty) return 'Unknown';
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
+
   // Get current user
   User? get currentUser => _supabase.auth.currentUser;
   String? get currentUserId => _supabase.auth.currentUser?.id;
@@ -19,6 +33,24 @@ class SupabaseAuthService {
   // Auth state stream
   Stream<AuthState> get authStateChanges =>
       _supabase.auth.onAuthStateChange;
+
+  /// Resolve current signed-in user's role from auth metadata or profile.
+  Future<String?> getCurrentUserType() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return null;
+
+    final metadataType = user.userMetadata?['user_type']?.toString();
+    if (metadataType != null && metadataType.trim().isNotEmpty) {
+      return _normalizeUserType(metadataType);
+    }
+
+    final profile = await _dbService.getUser(user.id);
+    if (profile != null && profile.userType.trim().isNotEmpty) {
+      return _normalizeUserType(profile.userType);
+    }
+
+    return null;
+  }
 
   // ==================== EMAIL/PASSWORD AUTH ====================
 
@@ -30,9 +62,24 @@ class SupabaseAuthService {
     required String userType,
   }) async {
     try {
-      final response = await _supabase.auth.signUpWithPassword(
-        email: email,
+      final normalizedEmail = email.trim().toLowerCase();
+      final selectedType = _normalizeUserType(userType);
+
+      final existingUser = await _dbService.getUserByEmail(normalizedEmail);
+      if (existingUser != null) {
+        final existingType = _normalizeUserType(existingUser.userType);
+        if (existingType != selectedType) {
+          throw 'This email is already registered as ${_prettyUserType(existingType)}. Please continue as ${_prettyUserType(existingType)}.';
+        }
+      }
+
+      final response = await _supabase.auth.signUp(
+        email: normalizedEmail,
         password: password,
+        data: {
+          'display_name': displayName,
+          'user_type': selectedType,
+        },
       );
 
       final user = response.user;
@@ -45,9 +92,9 @@ class SupabaseAuthService {
         // Create user profile in database
         final userModel = UserModel(
           id: user.id,
-          email: email,
+          email: normalizedEmail,
           displayName: displayName,
-          userType: userType,
+          userType: selectedType,
           photoURL: '',
         );
 
@@ -64,14 +111,36 @@ class SupabaseAuthService {
   Future<User?> signInWithEmail({
     required String email,
     required String password,
+    required String selectedUserType,
   }) async {
     try {
+      final normalizedEmail = email.trim().toLowerCase();
+      final selectedType = _normalizeUserType(selectedUserType);
+
       final response = await _supabase.auth.signInWithPassword(
-        email: email,
+        email: normalizedEmail,
         password: password,
       );
 
-      return response.user;
+      final user = response.user;
+      if (user == null) return null;
+
+      String? accountType = user.userMetadata?['user_type']?.toString();
+
+      if (accountType == null || accountType.trim().isEmpty) {
+        final profile = await _dbService.getUser(user.id);
+        accountType = profile?.userType;
+      }
+
+      if (accountType != null && accountType.trim().isNotEmpty) {
+        final normalizedAccountType = _normalizeUserType(accountType);
+        if (normalizedAccountType != selectedType) {
+          await _supabase.auth.signOut();
+          throw 'This email is registered as ${_prettyUserType(normalizedAccountType)}. Please sign in as ${_prettyUserType(normalizedAccountType)}.';
+        }
+      }
+
+      return user;
     } on AuthException catch (e) {
       throw _handleAuthException(e);
     }
@@ -171,7 +240,7 @@ class SupabaseAuthService {
       case 'User not found':
         return 'User not found';
       default:
-        return e.message ?? 'Authentication error';
+        return e.message;
     }
   }
 }

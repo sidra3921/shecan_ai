@@ -67,12 +67,10 @@ class AppConfig {
   /// OpenAI Model to use
   static const String openaiModel = 'gpt-3.5-turbo'; // or 'gpt-4' for advanced
 
-  /// ============ FIREBASE CONFIGURATION ============
+  /// ============ BACKEND CONFIGURATION ============
   ///
-  /// Usually configured via google-services.json (Android) and GoogleService-Info.plist (iOS)
-  /// Already set up if Firebase is initialized in main.dart
-  static const String firebaseProjectId =
-      'shecan-ai-project'; // Update with your project
+  /// Backend is powered by Supabase.
+  static const String backendProvider = 'supabase';
 
   /// ============ APP FEATURE FLAGS ============
   ///
@@ -164,7 +162,7 @@ class AppConfig {
     print(
       '🤖 OpenAI Integration: ${enableRealOpenAI ? "ENABLED" : "DISABLED (Mock)"}',
     );
-    print('🔐 Firebase Project: $firebaseProjectId');
+    print('🔐 Backend: $backendProvider');
     print('📊 Detailed Logging: ${enableDetailedLogging ? "ON" : "OFF"}');
     print('================================\n');
   }

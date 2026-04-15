@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ReviewModel {
   final String id;
   final String projectId;
@@ -42,8 +40,8 @@ class ReviewModel {
       'rating': rating,
       'comment': comment,
       'tags': tags,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
       'verified': verified,
       'helpfulCount': helpfulCount,
       'fraudStatus': fraudStatus,
@@ -61,15 +59,25 @@ class ReviewModel {
       rating: (map['rating'] ?? 0.0).toDouble(),
       comment: map['comment'] ?? '',
       tags: List<String>.from(map['tags'] ?? []),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: map['updatedAt'] != null
-          ? (map['updatedAt'] as Timestamp).toDate()
-          : null,
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(map['updatedAt']),
       verified: map['verified'] ?? false,
       helpfulCount: map['helpfulCount'] ?? 0,
       fraudStatus: map['fraudStatus'] ?? 'none',
       fraudReason: map['fraudReason'],
       attachmentUrls: List<String>.from(map['attachmentUrls'] ?? []),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 }

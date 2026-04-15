@@ -58,7 +58,11 @@ class _SignInScreenState extends State<SignInScreen>
 
     try {
       if (isSignIn) {
-        await authService.signInWithEmail(email: email, password: password);
+        await authService.signInWithEmail(
+          email: email,
+          password: password,
+          selectedUserType: widget.userType,
+        );
       } else {
         await authService.signUpWithEmail(
           email: email,

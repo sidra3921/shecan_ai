@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get_it/get_it.dart';
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
@@ -46,7 +45,7 @@ Future<void> main() async {
   // Get from: https://app.supabase.com → Project Settings → API
   try {
     await supabaseService.initialize(
-      supabaseUrl: 'https://ieawgfrukdlhsbicnjhk.supabase.co',
+      supabaseUrl: 'https://ieawgfrukdlhsbjcnjhk.supabase.co',
       supabaseAnonKey: 'sb_publishable_kMwVg-kJ-688DXmlOvf_bg_9ItvRCa9',
     );
     print('✅ Supabase initialized successfully');

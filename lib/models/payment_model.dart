@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class PaymentModel {
   final String id;
   final String projectId;
@@ -33,7 +31,7 @@ class PaymentModel {
       'amount': amount,
       'status': status,
       'method': method,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toIso8601String(),
       'stripePaymentIntentId': stripePaymentIntentId,
       'receiptUrl': receiptUrl,
     };
@@ -48,10 +46,22 @@ class PaymentModel {
       amount: (map['amount'] ?? 0.0).toDouble(),
       status: map['status'] ?? 'pending',
       method: map['method'] ?? 'card',
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
       stripePaymentIntentId: map['stripePaymentIntentId'],
       receiptUrl: map['receiptUrl'],
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   // Helper getter
@@ -96,8 +106,7 @@ class Wallet {
       availableBalance: (map['availableBalance'] as num?)?.toDouble() ?? 0.0,
       pendingBalance: (map['pendingBalance'] as num?)?.toDouble() ?? 0.0,
       totalWithdrawn: (map['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
-      lastUpdated:
-          (map['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastUpdated: PaymentModel._parseDateTime(map['lastUpdated']) ?? DateTime.now(),
       bankAccounts: List<String>.from(map['bankAccounts'] ?? []),
     );
   }

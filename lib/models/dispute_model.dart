@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class DisputeModel {
   final String id;
   final String projectId;
@@ -35,8 +33,8 @@ class DisputeModel {
       'status': status,
       'participants': participants,
       'messages': messages,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'resolvedAt': resolvedAt != null ? Timestamp.fromDate(resolvedAt!) : null,
+      'createdAt': createdAt.toIso8601String(),
+      'resolvedAt': resolvedAt?.toIso8601String(),
     };
   }
 
@@ -50,9 +48,21 @@ class DisputeModel {
       status: map['status'] ?? 'open',
       participants: List<String>.from(map['participants'] ?? []),
       messages: List<Map<String, dynamic>>.from(map['messages'] ?? []),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
-      resolvedAt: (map['resolvedAt'] as Timestamp?)?.toDate(),
+      createdAt: _parseDateTime(map['createdAt']),
+      resolvedAt: _parseDateTime(map['resolvedAt']),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   // Helper getters

@@ -48,10 +48,10 @@ dependencies:
   shared_preferences: ^2.2.2
   
   # Location & GIS
-  geolocator: ^10.1.0
-  geocoding: ^2.1.1
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
   
-  # Supabase (replacing Firebase)
+  # Supabase backend
   supabase_flutter: ^2.6.0
   
   # Service Locator & Dependency Injection

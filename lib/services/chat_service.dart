@@ -1,191 +1,113 @@
-// Firestore removed - use SupabaseDatabaseService instead
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/chat_model.dart';
 
 class ChatService {
-  // FirebaseFirestore instance removed
+  static final ChatService _instance = ChatService._internal();
+  factory ChatService() => _instance;
+  ChatService._internal();
 
-  /// Get or create a conversation between two users
-  Future<Conversation> getOrCreateConversation({
-    required String currentUserId,
-    required String otherUserId,
-    required String currentUserName,
-    required String otherUserName,
-    required String currentUserAvatar,
-    required String otherUserAvatar,
-    String? projectId,
-    String? projectTitle,
-  }) async {
-    try {
-      final query = await _firestore
-          .collection('conversations')
-          .where('participantIds', arrayContains: currentUserId)
-          .get();
+  final _supabase = Supabase.instance.client;
 
-      for (final doc in query.docs) {
-        final conv = Conversation.fromMap(doc.data(), doc.id);
-        if (conv.participantIds.contains(otherUserId)) {
-          return conv;
-        }
-      }
-
-      final conversationRef = _firestore.collection('conversations').doc();
-      final participants = [currentUserId, otherUserId];
-      final participantNames = {
-        currentUserId: currentUserName,
-        otherUserId: otherUserName,
-      };
-
-      final conversation = Conversation(
-        id: conversationRef.id,
-        participantIds: participants,
-        participantNames: participantNames,
-        participantAvatars: {
-          currentUserId: currentUserAvatar,
-          otherUserId: otherUserAvatar,
-        },
-        lastMessage: 'Conversation started',
-        lastMessageTimestamp: DateTime.now(),
-        lastMessageSenderId: currentUserId,
-        createdAt: DateTime.now(),
-        projectId: projectId,
-        projectTitle: projectTitle,
-      );
-
-      await conversationRef.set(conversation.toMap());
-      return conversation;
-    } catch (e) {
-      print('Error creating conversation: $e');
-      rethrow;
-    }
+  Stream<List<Conversation>> getConversationsStream(String userId) {
+    return _supabase
+        .from('conversations')
+        .stream(primaryKey: ['id'])
+        .map((rows) {
+          final mapped = rows
+              .where((row) => (row['participant_ids'] as List?)?.contains(userId) ?? false)
+              .map((row) => _mapConversation(row, userId))
+              .toList();
+          mapped.sort(
+            (a, b) => b.lastMessageTimestamp.compareTo(a.lastMessageTimestamp),
+          );
+          return mapped;
+        });
   }
 
-  /// Send a message
+  Stream<List<ChatMessage>> getMessagesStream(String conversationId) {
+    return _supabase
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .eq('conversation_id', conversationId)
+        .map((rows) {
+          final mapped = rows.map((row) => _mapMessage(row)).toList();
+          mapped.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return mapped;
+        });
+  }
+
   Future<void> sendMessage({
     required String conversationId,
     required String senderId,
     required String senderName,
     required String senderAvatar,
     required String content,
-    List<String>? attachmentUrls,
   }) async {
-    try {
-      final messageRef = _firestore
-          .collection('conversations')
-          .doc(conversationId)
-          .collection('messages')
-          .doc();
+    final now = DateTime.now().toIso8601String();
 
-      final message = ChatMessage(
-        id: messageRef.id,
-        conversationId: conversationId,
-        senderId: senderId,
-        senderName: senderName,
-        senderAvatar: senderAvatar,
-        content: content,
-        attachmentUrls: attachmentUrls,
-        timestamp: DateTime.now(),
-      );
+    await _supabase.from('messages').insert({
+      'conversation_id': conversationId,
+      'sender_id': senderId,
+      'sender_name': senderName,
+      'sender_avatar': senderAvatar,
+      'content': content,
+      'read_by': [senderId],
+      'is_read': false,
+      'created_at': now,
+    });
 
-      await messageRef.set(message.toMap());
-
-      await _firestore.collection('conversations').doc(conversationId).update({
-        'lastMessage': content.length > 100
-            ? '${content.substring(0, 100)}...'
-            : content,
-        'lastMessageTimestamp': DateTime.now(),
-        'lastMessageSenderId': senderId,
-      });
-    } catch (e) {
-      print('Error sending message: $e');
-      rethrow;
-    }
+    await _supabase.from('conversations').update({
+      'last_message': content,
+      'last_message_sender_id': senderId,
+      'last_message_timestamp': now,
+      'updated_at': now,
+    }).eq('id', conversationId);
   }
 
-  /// Get messages stream
-  Stream<List<ChatMessage>> getMessagesStream(String conversationId) {
-    return _firestore
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .limit(50)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => ChatMessage.fromMap(doc.data(), doc.id))
-              .toList();
-        });
+  ChatMessage _mapMessage(Map<String, dynamic> row) {
+    return ChatMessage(
+      id: row['id']?.toString() ?? '',
+      conversationId: row['conversation_id']?.toString() ?? '',
+      senderId: row['sender_id']?.toString() ?? '',
+      senderName: row['sender_name']?.toString() ?? '',
+      senderAvatar: row['sender_avatar']?.toString() ?? '',
+      content: row['content']?.toString() ?? '',
+      attachmentUrls: List<String>.from(row['attachment_urls'] ?? const []),
+      timestamp: DateTime.tryParse(row['created_at']?.toString() ?? '') ?? DateTime.now(),
+      readBy: List<String>.from(row['read_by'] ?? const []),
+      isRead: row['is_read'] == true,
+    );
   }
 
-  /// Get conversations stream
-  Stream<List<Conversation>> getConversationsStream(String userId) {
-    return _firestore
-        .collection('conversations')
-        .where('participantIds', arrayContains: userId)
-        .orderBy('lastMessageTimestamp', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => Conversation.fromMap(doc.data(), doc.id))
-              .toList();
-        });
-  }
+  Conversation _mapConversation(Map<String, dynamic> row, String userId) {
+    final participantIds = List<String>.from(row['participant_ids'] ?? const []);
+    final names = Map<String, String>.from(row['participant_names'] ?? const {});
+    final avatars = Map<String, String>.from(row['participant_avatars'] ?? const {});
 
-  /// Mark message as read
-  Future<void> markMessageAsRead({
-    required String conversationId,
-    required String messageId,
-    required String userId,
-  }) async {
-    try {
-      await _firestore
-          .collection('conversations')
-          .doc(conversationId)
-          .collection('messages')
-          .doc(messageId)
-          .update({
-            // Replace with Supabase: doc.update({...});
-            //'readBy': [...],
-            'isRead': true,
-          });
-    } catch (e) {
-      print('Error marking read: $e');
-    }
-  }
+    final otherUserId = participantIds.firstWhere(
+      (id) => id != userId,
+      orElse: () => participantIds.isNotEmpty ? participantIds.first : '',
+    );
 
-  /// Delete conversation
-  Future<void> deleteConversation(String conversationId) async {
-    try {
-      await _firestore.collection('conversations').doc(conversationId).delete();
-    } catch (e) {
-      print('Error deleting conversation: $e');
-      rethrow;
-    }
-  }
-
-  /// Search conversations
-  Future<List<Conversation>> searchConversations({
-    required String userId,
-    required String searchQuery,
-  }) async {
-    try {
-      final conversations = await _firestore
-          .collection('conversations')
-          .where('participantIds', arrayContains: userId)
-          .get();
-
-      final filtered = conversations.docs
-          .map((doc) => Conversation.fromMap(doc.data(), doc.id))
-          .where((conv) {
-            final names = conv.participantNames.values.join(' ').toLowerCase();
-            return names.contains(searchQuery.toLowerCase());
-          })
-          .toList();
-
-      return filtered;
-    } catch (e) {
-      print('Error searching: $e');
-      return [];
-    }
+    return Conversation(
+      id: row['id']?.toString() ?? '',
+      participantIds: participantIds,
+      participantNames: otherUserId.isEmpty
+          ? names
+          : {otherUserId: names[otherUserId] ?? 'Unknown'},
+      participantAvatars: otherUserId.isEmpty
+          ? avatars
+          : {otherUserId: avatars[otherUserId] ?? ''},
+      lastMessage: row['last_message']?.toString() ?? '',
+      lastMessageTimestamp:
+          DateTime.tryParse(row['last_message_timestamp']?.toString() ?? '') ??
+          DateTime.now(),
+      lastMessageSenderId: row['last_message_sender_id']?.toString() ?? '',
+      unreadCount: (row['unread_count'] as num?)?.toInt() ?? 0,
+      createdAt: DateTime.tryParse(row['created_at']?.toString() ?? '') ?? DateTime.now(),
+      projectId: row['project_id']?.toString(),
+      projectTitle: row['project_title']?.toString(),
+    );
   }
 }

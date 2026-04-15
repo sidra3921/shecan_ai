@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shecan_ai/screens/guest_screens/guest_main_screen.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
+import '../services/supabase_auth_service.dart';
 import 'client_screens/client_main.dart';
 import 'women_screens/women_main.dart';
 
@@ -29,7 +28,6 @@ class _SignInScreenState extends State<SignInScreen>
 
   bool _obscurePassword = true;
   bool _isLoading = false;
-
   @override
   void initState() {
     super.initState();
@@ -54,7 +52,7 @@ class _SignInScreenState extends State<SignInScreen>
     final password = _passwordController.text.trim();
     final isSignIn = _tabController.index == 0;
 
-    final authService = AuthService();
+    final authService = SupabaseAuthService();
 
     setState(() => _isLoading = true);
 
@@ -89,31 +87,15 @@ class _SignInScreenState extends State<SignInScreen>
         context,
         MaterialPageRoute(builder: (_) => nextScreen),
       );
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_authErrorMessage(e)),
+          content: Text(e.toString()),
           backgroundColor: AppColors.error,
         ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  // ================= ERROR HANDLING =================
-
-  String _authErrorMessage(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'Invalid email';
-      case 'user-not-found':
-      case 'wrong-password':
-        return 'Wrong credentials';
-      case 'email-already-in-use':
-        return 'Email already exists';
-      default:
-        return 'Something went wrong';
     }
   }
 

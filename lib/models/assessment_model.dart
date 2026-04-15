@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SkillAssessment {
   final String id;
@@ -38,7 +37,7 @@ class SkillAssessment {
       totalQuestions: map['totalQuestions'] ?? 0,
       difficulty: map['difficulty'] ?? 1,
       passingScore: map['passingScore'] ?? 70,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
     );
   }
 }
@@ -139,9 +138,20 @@ class AssessmentResult {
       scorePercentage: (map['scorePercentage'] as num?)?.toDouble() ?? 0.0,
       passed: map['passed'] ?? false,
       completedAt:
-          (map['completedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          _parseDateTime(map['completedAt']) ?? DateTime.now(),
       timeSpentSeconds: map['timeSpentSeconds'] ?? 0,
       badge: map['badge'] ?? 'bronze',
     );
   }
+}
+
+DateTime? _parseDateTime(dynamic value) {
+  if (value is String) {
+    try {
+      return DateTime.parse(value);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
 }

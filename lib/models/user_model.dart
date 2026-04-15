@@ -1,5 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:math';
+
 
 class UserModel {
   final String id;
@@ -15,14 +14,14 @@ class UserModel {
   final int completedProjects;
   final double totalEarnings;
   final int totalReviews;
-  
+
   // Location fields for GIS
   final double? latitude;
   final double? longitude;
   final String? city;
   final String? country;
   final String? address;
-  
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -69,8 +68,8 @@ class UserModel {
       'city': city,
       'country': country,
       'address': address,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -94,8 +93,8 @@ class UserModel {
       city: map['city'],
       country: map['country'],
       address: map['address'],
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(map['updatedAt']) ?? DateTime.now(),
     );
   }
 
@@ -141,34 +140,60 @@ class UserModel {
       updatedAt: DateTime.now(),
     );
   }
-  
+
   /// Calculate distance to another user in kilometers using Haversine formula
   double? distanceToUser(UserModel other) {
-    if (latitude == null || longitude == null || 
-        other.latitude == null || other.longitude == null) {
+    if (latitude == null ||
+        longitude == null ||
+        other.latitude == null ||
+        other.longitude == null) {
       return null;
     }
-    return _calculateDistance(latitude!, longitude!, other.latitude!, other.longitude!);
+    return _calculateDistance(
+      latitude!,
+      longitude!,
+      other.latitude!,
+      other.longitude!,
+    );
   }
-  
+
   /// Haversine formula for calculating distance between two coordinates
-  static double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  static double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const double earthRadius = 6371; // Earth's radius in kilometers
-    
+
     final double dLat = _toRadians(lat2 - lat1);
     final double dLon = _toRadians(lon2 - lon1);
-    
-    final double a = 
-      sin(dLat / 2) * sin(dLat / 2) +
-      cos(_toRadians(lat1)) * cos(_toRadians(lat2)) *
-      sin(dLon / 2) * sin(dLon / 2);
-    
+
+    final double a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRadians(lat1)) *
+            cos(_toRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+
     final double c = 2 * asin(sqrt(a));
-    
+
     return earthRadius * c;
   }
-  
+
   static double _toRadians(double degrees) {
     return degrees * 3.141592653589793 / 180;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        print('Error parsing DateTime: $e');
+        return null;
+      }
+    }
+    return null;
   }
 }

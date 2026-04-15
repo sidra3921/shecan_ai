@@ -1,4 +1,4 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
+// Firebase Messaging removed - use Supabase push notifications instead
 import '../models/notification_model.dart';
 import 'firestore_service.dart';
 
@@ -7,7 +7,7 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  // Firebase Messaging instance removed
   final FirestoreService _firestore = FirestoreService();
 
   String? _fcmToken;

@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class VideoConsultation {
   final String id;
@@ -70,25 +69,31 @@ class VideoConsultation {
       clientId: map['clientId'] ?? '',
       mentorName: map['mentorName'] ?? '',
       clientName: map['clientName'] ?? '',
-      scheduledTime:
-          (map['scheduledTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      scheduledTime: _parseDateTime(map['scheduledTime']) ?? DateTime.now(),
       durationMinutes: map['durationMinutes'] ?? 30,
       pricePerMinute: (map['pricePerMinute'] as num?)?.toDouble() ?? 0.0,
       totalPrice: (map['totalPrice'] as num?)?.toDouble() ?? 0.0,
       status: map['status'] ?? 'scheduled',
       roomToken: map['roomToken'],
       roomId: map['roomId'],
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      startedAt: map['startedAt'] != null
-          ? (map['startedAt'] as Timestamp).toDate()
-          : null,
-      endedAt: map['endedAt'] != null
-          ? (map['endedAt'] as Timestamp).toDate()
-          : null,
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      startedAt: map['startedAt'] != null ? _parseDateTime(map['startedAt']) : null,
+      endedAt: map['endedAt'] != null ? _parseDateTime(map['endedAt']) : null,
       recordingUrl: map['recordingUrl'],
       rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
       feedback: map['feedback'],
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 }
 

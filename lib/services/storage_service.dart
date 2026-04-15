@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
+// Firebase Storage removed - use SupabaseStorageService instead
 import 'package:image_picker/image_picker.dart';
 
 class StorageService {
@@ -7,7 +7,7 @@ class StorageService {
   factory StorageService() => _instance;
   StorageService._internal();
 
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  // Firebase Storage instance removed
   final ImagePicker _picker = ImagePicker();
 
   // ==================== USER PROFILE ====================

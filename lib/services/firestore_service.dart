@@ -1,13 +1,15 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user_model.dart';
-import '../models/project_model.dart';
-import '../models/message_model.dart';
-import '../models/notification_model.dart';
-import '../models/payment_model.dart';
-import '../models/dispute_model.dart';
-import '../models/review_model.dart';
+/// ⚠️ DEPRECATED: Use SupabaseDatabaseService instead
+/// This file is kept for backward compatibility only
+/// All new code should use SupabaseDatabaseService from 'supabase_database_service.dart'
 
 class FirestoreService {
+  @Deprecated('Use SupabaseDatabaseService instead')
+  static final FirestoreService _instance = FirestoreService._internal();
+  
+  @Deprecated('Use SupabaseDatabaseService instead')
+  factory FirestoreService() => _instance;
+  
+  FirestoreService._internal();
   static final FirestoreService _instance = FirestoreService._internal();
   factory FirestoreService() => _instance;
   FirestoreService._internal();

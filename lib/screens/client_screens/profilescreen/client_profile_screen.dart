@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+
 import '../../../constants/app_colors.dart';
+import '../../../models/user_model.dart';
+import '../../../services/supabase_database_service.dart';
+import '../../../services/supabase_auth_service.dart';
+import '../../edit_profile_screen.dart';
 import 'help_center/client_help_center_screen.dart';
 import 'order_history/client_order_history.dart';
 import 'payment_method/client_payment.dart';
@@ -7,10 +13,14 @@ import 'privacy_security/client_privacy_and_security.dart';
 import 'save_women/client_save_women.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, required this.userId});
+
+  final String userId;
 
   @override
   Widget build(BuildContext context) {
+    final db = GetIt.instance<SupabaseDatabaseService>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -21,84 +31,117 @@ class ProfileScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // 👤 PROFILE HEADER
-            _buildHeader(),
+        child: StreamBuilder<UserModel?>(
+          stream: db.streamUser(userId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            const SizedBox(height: 20),
-
-            // 📊 STATS
-            Row(
-              children: [
-                _statCard("Orders", "12"),
-                _statCard("Chats", "5"),
-                _statCard("Saved", "8"),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // ⚙️ SETTINGS
-            _settingTile(
-              context,
-              Icons.payment,
-              "Payment Methods",
-              const PaymentMethodsScreen(),
-            ),
-            _settingTile(
-              context,
-              Icons.history,
-              "Order History",
-              const OrderHistoryScreen(),
-            ),
-            _settingTile(
-              context,
-              Icons.favorite,
-              "Saved Mentors",
-              const SavedMentorsScreen(),
-            ),
-            _settingTile(
-              context,
-              Icons.security,
-              "Privacy & Security",
-              const PrivacySecurityScreen(),
-            ),
-            _settingTile(
-              context,
-              Icons.help,
-              "Help Center",
-              const HelpCenterScreen(),
-            ),
-
-            const SizedBox(height: 20),
-
-            // 🚪 LOGOUT
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Center(
+            if (snapshot.hasError) {
+              return Center(
                 child: Text(
-                  "Logout",
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
+                  'Failed to load profile',
+                  style: TextStyle(color: AppColors.error),
+                ),
+              );
+            }
+
+            final user = snapshot.data;
+            if (user == null) {
+              return const Center(child: Text('Profile not found'));
+            }
+
+            return Column(
+              children: [
+                // 👤 PROFILE HEADER
+                _buildHeader(context, user),
+
+                const SizedBox(height: 20),
+
+                // 📊 STATS
+                Row(
+                  children: [
+                    _statCard('Projects', '${user.completedProjects}'),
+                    _statCard('Reviews', '${user.totalReviews}'),
+                    _statCard('Rating', user.rating.toStringAsFixed(1)),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // ⚙️ SETTINGS
+                _settingTile(
+                  context,
+                  Icons.payment,
+                  'Payment Methods',
+                  const PaymentMethodsScreen(),
+                ),
+                _settingTile(
+                  context,
+                  Icons.history,
+                  'Order History',
+                  const OrderHistoryScreen(),
+                ),
+                _settingTile(
+                  context,
+                  Icons.favorite,
+                  'Saved Mentors',
+                  SavedMentorsScreen(userId: userId),
+                ),
+                _settingTile(
+                  context,
+                  Icons.security,
+                  'Privacy & Security',
+                  const PrivacySecurityScreen(),
+                ),
+                _settingTile(
+                  context,
+                  Icons.help,
+                  'Help Center',
+                  const HelpCenterScreen(),
+                ),
+
+                const SizedBox(height: 20),
+
+                // 🚪 LOGOUT
+                InkWell(
+                  onTap: () async {
+                    await SupabaseAuthService().signOut();
+                    if (context.mounted) {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Logout',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
   // 👤 HEADER
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context, UserModel user) {
+    final hasPhoto = user.photoURL.trim().isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -106,7 +149,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -117,28 +160,36 @@ class ProfileScreen extends StatelessWidget {
           CircleAvatar(
             radius: 35,
             backgroundColor: AppColors.primaryLight,
-            child: const Icon(Icons.person, size: 35, color: Colors.white),
+            backgroundImage: hasPhoto ? NetworkImage(user.photoURL) : null,
+            child: hasPhoto
+                ? null
+                : const Icon(Icons.person, size: 35, color: Colors.white),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Client Name",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  user.displayName,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  "Client Account • SheCan AI",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  '${user.userType} • ${user.email}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () {},
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
+            },
             child: const Text("Edit"),
           ),
         ],

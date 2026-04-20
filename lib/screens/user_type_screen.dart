@@ -116,14 +116,17 @@ class _UserTypeCardState extends State<_UserTypeCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           padding: const EdgeInsets.all(20),
-          transform: Matrix4.identity()
-            ..scale(_isPressed ? 0.96 : 1.0), // 👈 press effect
+          transform: Matrix4.diagonal3Values(
+            _isPressed ? 0.96 : 1.0,
+            _isPressed ? 0.96 : 1.0,
+            1.0,
+          ), // 👈 press effect
           decoration: BoxDecoration(
             gradient: AppColors.primaryGradient,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.25),
+                color: AppColors.primary.withValues(alpha: 0.25),
                 blurRadius: _isPressed ? 10 : 20,
                 offset: Offset(0, _isPressed ? 5 : 10),
               ),
@@ -136,7 +139,7 @@ class _UserTypeCardState extends State<_UserTypeCard> {
                 width: 65,
                 height: 65,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(widget.icon, size: 32, color: Colors.white),
@@ -161,7 +164,7 @@ class _UserTypeCardState extends State<_UserTypeCard> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
               ),
             ],

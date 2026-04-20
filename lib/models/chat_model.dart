@@ -9,6 +9,7 @@ class ChatMessage {
   final DateTime timestamp;
   final List<String> readBy; // User IDs who read this message
   final bool isRead;
+  final DateTime? seenAt;
 
   ChatMessage({
     required this.id,
@@ -21,6 +22,7 @@ class ChatMessage {
     required this.timestamp,
     this.readBy = const [],
     this.isRead = false,
+    this.seenAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,8 +37,11 @@ class ChatMessage {
       'timestamp': timestamp,
       'readBy': readBy,
       'isRead': isRead,
+      'seenAt': seenAt?.toIso8601String(),
     };
   }
+
+  bool isSeenBy(String userId) => readBy.contains(userId);
 
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
@@ -63,11 +68,16 @@ class ChatMessage {
       timestamp: _parseDateTime(map['timestamp']) ?? DateTime.now(),
       readBy: List<String>.from(map['readBy'] ?? []),
       isRead: map['isRead'] ?? false,
+      seenAt: _parseDateTime(map['seenAt']),
     );
   }
 }
 
 class Conversation {
+  static const String groupNameMetaKey = '__group_name';
+  static const String groupAdminMetaKey = '__group_admin_id';
+  static const String groupAvatarMetaKey = '__group_avatar';
+
   final String id;
   final List<String> participantIds; // User IDs involved
   final Map<String, String> participantNames; // userId -> displayName
@@ -94,15 +104,61 @@ class Conversation {
     this.projectTitle,
   });
 
+  Map<String, String> get visibleParticipantNames {
+    return Map<String, String>.fromEntries(
+      participantNames.entries.where((e) => !e.key.startsWith('__')),
+    );
+  }
+
+  Map<String, String> get visibleParticipantAvatars {
+    return Map<String, String>.fromEntries(
+      participantAvatars.entries.where((e) => !e.key.startsWith('__')),
+    );
+  }
+
+  bool get isGroup {
+    final namedGroup = (participantNames[groupNameMetaKey] ?? '').trim().isNotEmpty;
+    return namedGroup || visibleParticipantNames.length > 2;
+  }
+
+  String get groupName {
+    final name = (participantNames[groupNameMetaKey] ?? '').trim();
+    if (name.isNotEmpty) return name;
+    return 'Community Group';
+  }
+
+  String get groupAdminId {
+    return (participantNames[groupAdminMetaKey] ?? '').trim();
+  }
+
+  String get groupAvatarUrl {
+    return (participantAvatars[groupAvatarMetaKey] ?? '').trim();
+  }
+
+  bool canManageGroup(String userId) {
+    if (!isGroup) return false;
+    return groupAdminId.isNotEmpty && groupAdminId == userId;
+  }
+
+  String get displayTitle {
+    if (isGroup) return groupName;
+    return otherUserName ?? 'Mentor';
+  }
+
+  String get displaySubtitle {
+    if (isGroup) return '${visibleParticipantNames.length} members';
+    return '';
+  }
+
   // Helper getters for easier access to other user info
   String? get otherUserName {
-    if (participantNames.isEmpty) return null;
-    return participantNames.values.first;
+    if (visibleParticipantNames.isEmpty) return null;
+    return visibleParticipantNames.values.first;
   }
 
   String? get otherUserAvatar {
-    if (participantAvatars.isEmpty) return null;
-    return participantAvatars.values.first;
+    if (visibleParticipantAvatars.isEmpty) return null;
+    return visibleParticipantAvatars.values.first;
   }
 
   Map<String, dynamic> toMap() {

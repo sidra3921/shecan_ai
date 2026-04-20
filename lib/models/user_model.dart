@@ -1,6 +1,7 @@
 
 
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 
 class UserModel {
   final String id;
@@ -200,7 +201,7 @@ class UserModel {
       try {
         return DateTime.parse(value);
       } catch (e) {
-        print('Error parsing DateTime: $e');
+        debugPrint('Error parsing DateTime: $e');
         return null;
       }
     }

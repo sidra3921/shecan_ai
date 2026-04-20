@@ -13,6 +13,12 @@ class SupabaseAuthService {
 
   String _normalizeUserType(String value) {
     final normalized = value.trim().toLowerCase();
+    if (normalized == 'women' || normalized == 'woman') {
+      return 'mentor';
+    }
+    if (normalized == 'guest') {
+      return 'client';
+    }
     if (normalized == 'mentor' || normalized == 'client') {
       return normalized;
     }

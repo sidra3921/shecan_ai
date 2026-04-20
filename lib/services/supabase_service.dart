@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -21,9 +22,9 @@ class SupabaseService {
         anonKey: supabaseAnonKey,
       );
       _client = Supabase.instance.client;
-      print('✅ Supabase initialized successfully');
+      debugPrint('✅ Supabase initialized successfully');
     } catch (e) {
-      print('❌ Failed to initialize Supabase: $e');
+      debugPrint('❌ Failed to initialize Supabase: $e');
       rethrow;
     }
   }

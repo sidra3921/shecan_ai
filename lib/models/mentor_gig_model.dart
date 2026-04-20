@@ -8,6 +8,8 @@ class MentorGigModel {
   final String? experienceLevel;
   final double hourlyRate;
   final bool isActive;
+  final String imageUrl;
+  final List<Map<String, dynamic>> packages;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -21,6 +23,8 @@ class MentorGigModel {
     this.experienceLevel,
     this.hourlyRate = 0,
     this.isActive = true,
+    this.imageUrl = '',
+    this.packages = const [],
     DateTime? createdAt,
     DateTime? updatedAt,
   }) : createdAt = createdAt ?? DateTime.now(),
@@ -36,6 +40,8 @@ class MentorGigModel {
       'experience_level': experienceLevel,
       'hourly_rate': hourlyRate,
       'is_active': isActive,
+      'image_url': imageUrl,
+      'packages': packages,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -52,6 +58,10 @@ class MentorGigModel {
       experienceLevel: map['experience_level']?.toString(),
       hourlyRate: (map['hourly_rate'] ?? 0).toDouble(),
       isActive: map['is_active'] == null ? true : map['is_active'] == true,
+        imageUrl: (map['image_url'] ?? map['imageUrl'] ?? '').toString(),
+        packages: ((map['packages'] ?? map['package_tiers'] ?? const []) as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList(),
       createdAt:
           DateTime.tryParse(map['created_at']?.toString() ?? '') ??
           DateTime.now(),

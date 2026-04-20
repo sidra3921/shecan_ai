@@ -98,7 +98,7 @@ class _ProjectMentorMatchesScreenState extends State<ProjectMentorMatchesScreen>
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.success.withOpacity(0.12),
+                                      color: AppColors.success.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -140,7 +140,7 @@ class _ProjectMentorMatchesScreenState extends State<ProjectMentorMatchesScreen>
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.info.withOpacity(0.12),
+                                        color: AppColors.info.withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(

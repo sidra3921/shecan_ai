@@ -26,30 +26,31 @@ class DisputeModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'projectId': projectId,
-      'raisedBy': raisedBy,
-      'againstUser': againstUser,
+      'project_id': projectId,
+      'raised_by': raisedBy,
+      'against_user': againstUser,
       'reason': reason,
       'status': status,
       'participants': participants,
       'messages': messages,
-      'createdAt': createdAt.toIso8601String(),
-      'resolvedAt': resolvedAt?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+      'resolved_at': resolvedAt?.toIso8601String(),
     };
   }
 
   factory DisputeModel.fromMap(Map<String, dynamic> map, String id) {
     return DisputeModel(
       id: id,
-      projectId: map['projectId'] ?? '',
-      raisedBy: map['raisedBy'] ?? '',
-      againstUser: map['againstUser'] ?? '',
+      projectId: map['project_id'] ?? map['projectId'] ?? '',
+      raisedBy:
+          map['raised_by'] ?? map['raisedBy'] ?? map['initiator_id'] ?? '',
+      againstUser: map['against_user'] ?? map['againstUser'] ?? '',
       reason: map['reason'] ?? '',
       status: map['status'] ?? 'open',
       participants: List<String>.from(map['participants'] ?? []),
       messages: List<Map<String, dynamic>>.from(map['messages'] ?? []),
-      createdAt: _parseDateTime(map['createdAt']),
-      resolvedAt: _parseDateTime(map['resolvedAt']),
+      createdAt: _parseDateTime(map['created_at'] ?? map['createdAt']),
+      resolvedAt: _parseDateTime(map['resolved_at'] ?? map['resolvedAt']),
     );
   }
 

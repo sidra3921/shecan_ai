@@ -56,6 +56,7 @@ class AppColors {
   static const Color background = Color(0xFFF7F6FB);
   static const Color cardBackground = Colors.white;
   static const Color surface = Color(0xFFEFECFF);
+  static const Color pinkBackground = Color(0xFFFCE4EC);
 
   // 🧠 Text Colors (Better hierarchy)
   static const Color textPrimary = Color(0xFF1F1B2E);

@@ -21,12 +21,15 @@ class NotificationModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'userId': userId,
+      'user_id': userId,
       'type': type,
       'title': title,
       'message': message,
+      'content': message,
+      'is_read': read,
       'read': read,
       'data': data,
+      'created_at': createdAt.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -34,13 +37,13 @@ class NotificationModel {
   factory NotificationModel.fromMap(Map<String, dynamic> map, String id) {
     return NotificationModel(
       id: id,
-      userId: map['userId'] ?? '',
+      userId: map['user_id'] ?? map['userId'] ?? '',
       type: map['type'] ?? '',
       title: map['title'] ?? '',
-      message: map['message'] ?? '',
-      read: map['read'] ?? false,
+      message: map['message'] ?? map['content'] ?? '',
+      read: map['is_read'] ?? map['read'] ?? false,
       data: map['data'] as Map<String, dynamic>?,
-      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      createdAt: _parseDateTime(map['created_at'] ?? map['createdAt']) ?? DateTime.now(),
     );
   }
 

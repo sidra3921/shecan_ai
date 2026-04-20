@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import '../../../constants/app_colors.dart';
+import '../../../models/user_model.dart';
+import '../../../services/supabase_database_service.dart';
+import '../../../services/supabase_auth_service.dart';
+import '../../edit_profile_screen.dart';
 
 class MentorProfileScreen extends StatelessWidget {
-  const MentorProfileScreen({super.key});
+  const MentorProfileScreen({super.key, required this.userId});
+
+  final String userId;
 
   void _openSettings(BuildContext context) {
     showModalBottomSheet(
@@ -35,8 +42,11 @@ class MentorProfileScreen extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 10),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: () {
-                    Navigator.pop(context);
+                  onPressed: () async {
+                    await SupabaseAuthService().signOut();
+                    if (context.mounted) {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    }
                   },
                   child: const Text("Logout"),
                 ),
@@ -59,14 +69,16 @@ class MentorProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final db = GetIt.instance<SupabaseDatabaseService>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
 
-      // 🔥 APP BAR WITH SETTINGS
       appBar: AppBar(
         title: const Text("Mentor Profile"),
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        foregroundColor: AppColors.textPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -75,138 +87,178 @@ class MentorProfileScreen extends StatelessWidget {
         ],
       ),
 
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // 👤 PROFILE CARD
-          Container(
+      body: StreamBuilder<UserModel?>(
+        stream: db.streamUser(userId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Failed to load profile',
+                style: TextStyle(color: AppColors.error),
+              ),
+            );
+          }
+
+          final user = snapshot.data;
+          if (user == null) {
+            return const Center(child: Text('Profile not found'));
+          }
+
+          final hasPhoto = user.photoURL.trim().isNotEmpty;
+          final headline = user.skills.isNotEmpty
+              ? user.skills.take(3).join(' • ')
+              : user.hourlyRate > 0
+              ? 'Hourly rate: Rs ${user.hourlyRate.toStringAsFixed(0)}'
+              : 'Mentor';
+          final about = user.bio.trim().isNotEmpty
+              ? user.bio.trim()
+              : 'Update your bio from Edit Profile to tell clients about your experience.';
+          final skillTags = user.skills.isNotEmpty
+              ? user.skills
+              : const ['Mentor'];
+
+          return ListView(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Column(
+            children: [
+              _buildHeader(context, user, hasPhoto, headline),
+
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  _statCard('Projects', '${user.completedProjects}'),
+                  _statCard('Rating', user.rating.toStringAsFixed(1)),
+                  _statCard('Reviews', '${user.totalReviews}'),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              const Text(
+                'Skills',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: skillTags.map(_chip).toList(),
+              ),
+
+              const SizedBox(height: 20),
+
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  about,
+                  style: const TextStyle(color: Colors.black87),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHeader(
+    BuildContext context,
+    UserModel user,
+    bool hasPhoto,
+    String headline,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 35,
+            backgroundColor: AppColors.primaryLight,
+            backgroundImage: hasPhoto ? NetworkImage(user.photoURL) : null,
+            child: hasPhoto
+                ? null
+                : const Icon(Icons.person, size: 35, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: AppColors.primaryLight,
-                  child: Icon(Icons.person, size: 40, color: Colors.white),
-                ),
-                SizedBox(height: 10),
                 Text(
-                  "Ayesha Khan",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  user.displayName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  "Flutter & Mobile App Developer",
-                  style: TextStyle(color: Colors.grey),
+                  headline,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          // 📊 STATS
-          Row(
-            children: [
-              _stat("Projects", "120"),
-              _stat("Rating", "4.9"),
-              _stat("Experience", "3y"),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // 🧠 SKILLS
-          const Text(
-            "Skills",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 10),
-
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _chip("Flutter"),
-              _chip("Firebase"),
-              _chip("UI/UX"),
-              _chip("Dart"),
-              _chip("API Integration"),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // 📄 ABOUT SECTION
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Text(
-              "Experienced Flutter developer specializing in scalable mobile apps, UI design, and Firebase integration. Passionate about mentoring students and building real-world applications.",
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-
-          //           const SizedBox(height: 16),
-
-          // 💼 PORTFOLIO
-          const Text(
-            "Portfolio",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 10),
-
-          SizedBox(
-            height: 100,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: List.generate(5, (index) {
-                return Container(
-                  width: 100,
-                  margin: const EdgeInsets.only(right: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.image),
-                );
-              }),
-            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
+            },
+            child: const Text('Edit'),
           ),
         ],
       ),
     );
   }
 
-  // 📊 STAT CARD
-  static Widget _stat(String title, String value) {
+  Widget _statCard(String title, String value) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           children: [
             Text(
               value,
               style: const TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 12)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ],
         ),
       ),
@@ -218,7 +270,7 @@ class MentorProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
+        color: AppColors.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

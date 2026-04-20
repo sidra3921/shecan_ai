@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -15,6 +16,8 @@ class SupabaseStorageService {
   static const String projectPhotosBucket = 'project-photos';
   static const String documentsBucket = 'documents';
   static const String videosBucket = 'videos';
+  static const String gigImagesBucket = 'project-photos';
+  static const String communityImagesBucket = 'project-photos';
 
   // ==================== PROFILE PHOTOS ====================
 
@@ -91,11 +94,121 @@ class SupabaseStorageService {
           .from(profilePhotosBucket)
           .remove([filePath]);
     } catch (e) {
-      print('Error deleting profile photo: $e');
+      debugPrint('Error deleting profile photo: $e');
     }
   }
 
   // ==================== PROJECT PHOTOS ====================
+
+  Future<String> uploadGigImageBytes({
+    required String mentorId,
+    required String gigId,
+    required Uint8List bytes,
+    String extension = 'jpg',
+  }) async {
+    try {
+      final safeExt = extension.isEmpty ? 'jpg' : extension.toLowerCase();
+      final filePath = 'gig_images/$mentorId/${gigId}_cover.$safeExt';
+
+      await _supabase.storage
+          .from(gigImagesBucket)
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      return _supabase.storage.from(gigImagesBucket).getPublicUrl(filePath);
+    } catch (e) {
+      throw Exception('Failed to upload gig image: $e');
+    }
+  }
+
+  Future<String> uploadGigImageFile({
+    required String mentorId,
+    required String gigId,
+    required File imageFile,
+  }) {
+    final parts = imageFile.path.split('.');
+    final ext = parts.length > 1 ? parts.last : 'jpg';
+    return uploadGigImageBytes(
+      mentorId: mentorId,
+      gigId: gigId,
+      bytes: imageFile.readAsBytesSync(),
+      extension: ext,
+    );
+  }
+
+  Future<String> uploadCommunityImageBytes({
+    required String communityId,
+    required Uint8List bytes,
+    String extension = 'jpg',
+  }) async {
+    try {
+      final safeExt = extension.isEmpty ? 'jpg' : extension.toLowerCase();
+      final filePath = 'community_images/$communityId/avatar.$safeExt';
+
+      await _supabase.storage
+          .from(communityImagesBucket)
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      return _supabase.storage.from(communityImagesBucket).getPublicUrl(filePath);
+    } catch (e) {
+      throw Exception('Failed to upload community image: $e');
+    }
+  }
+
+  Future<String> uploadCourseThumbnailBytes({
+    required String mentorId,
+    required String courseId,
+    required Uint8List bytes,
+    String extension = 'jpg',
+  }) async {
+    try {
+      final safeExt = extension.isEmpty ? 'jpg' : extension.toLowerCase();
+      final filePath = 'course_images/$mentorId/${courseId}_cover.$safeExt';
+
+      await _supabase.storage
+          .from(gigImagesBucket)
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      return _supabase.storage.from(gigImagesBucket).getPublicUrl(filePath);
+    } catch (e) {
+      throw Exception('Failed to upload course thumbnail: $e');
+    }
+  }
+
+  Future<String> uploadCourseVideoBytes({
+    required String mentorId,
+    required String courseId,
+    required Uint8List bytes,
+    String extension = 'mp4',
+  }) async {
+    try {
+      final safeExt = extension.isEmpty ? 'mp4' : extension.toLowerCase();
+      final filePath = 'course_videos/$mentorId/${courseId}_lesson.$safeExt';
+
+      await _supabase.storage
+          .from(videosBucket)
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      return _supabase.storage.from(videosBucket).getPublicUrl(filePath);
+    } catch (e) {
+      throw Exception('Failed to upload course video: $e');
+    }
+  }
 
   /// Upload project photo
   Future<String> uploadProjectPhoto({
@@ -145,7 +258,7 @@ class SupabaseStorageService {
         );
         urls.add(url);
       } catch (e) {
-        print('Error uploading photo $i: $e');
+        debugPrint('Error uploading photo $i: $e');
       }
     }
     return urls;
@@ -196,7 +309,7 @@ class SupabaseStorageService {
           .from(documentsBucket)
           .remove([filePath]);
     } catch (e) {
-      print('Error deleting document: $e');
+      debugPrint('Error deleting document: $e');
     }
   }
 
@@ -243,7 +356,7 @@ class SupabaseStorageService {
           .from(videosBucket)
           .remove([filePath]);
     } catch (e) {
-      print('Error deleting video: $e');
+      debugPrint('Error deleting video: $e');
     }
   }
 
@@ -277,7 +390,7 @@ class SupabaseStorageService {
     try {
       await _supabase.storage.from(bucket).remove([filePath]);
     } catch (e) {
-      print('Error deleting file: $e');
+      debugPrint('Error deleting file: $e');
     }
   }
 
@@ -286,7 +399,7 @@ class SupabaseStorageService {
     try {
       return await _supabase.storage.from(bucket).list(path: folderPath);
     } catch (e) {
-      print('Error listing files: $e');
+      debugPrint('Error listing files: $e');
       return [];
     }
   }

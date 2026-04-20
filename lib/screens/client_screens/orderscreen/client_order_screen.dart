@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+
 import '../../../constants/app_colors.dart';
+import '../../../models/project_model.dart';
+import '../../../services/supabase_database_service.dart';
+import 'client_order_detail_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key});
+  const OrdersScreen({super.key, required this.userId});
+
+  final String userId;
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -51,9 +58,9 @@ class _OrdersScreenState extends State<OrdersScreen>
 
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          OrdersList(isCompleted: false),
-          OrdersList(isCompleted: true),
+        children: [
+          OrdersList(userId: widget.userId, isCompleted: false),
+          OrdersList(userId: widget.userId, isCompleted: true),
         ],
       ),
     );
@@ -61,29 +68,96 @@ class _OrdersScreenState extends State<OrdersScreen>
 }
 
 class OrdersList extends StatelessWidget {
+  final String userId;
   final bool isCompleted;
 
-  const OrdersList({super.key, required this.isCompleted});
+  const OrdersList({
+    super.key,
+    required this.userId,
+    required this.isCompleted,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return OrderCard(isCompleted: isCompleted);
+    final db = GetIt.instance<SupabaseDatabaseService>();
+
+    return StreamBuilder<List<ProjectModel>>(
+      stream: db.streamClientProjects(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Failed to load projects',
+              style: TextStyle(color: AppColors.error),
+            ),
+          );
+        }
+
+        final projects = snapshot.data ?? const <ProjectModel>[];
+        final filtered = projects.where((project) {
+          final status = project.status.toLowerCase();
+          if (isCompleted) return status == 'completed';
+          return status != 'completed' && status != 'cancelled';
+        }).toList();
+
+        if (filtered.isEmpty) {
+          return Center(
+            child: Text(
+              isCompleted
+                  ? 'No completed orders yet'
+                  : 'No ongoing orders yet',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: filtered.length,
+          itemBuilder: (context, index) {
+            return OrderCard(project: filtered[index], currentUserId: userId);
+          },
+        );
       },
     );
   }
 }
 
 class OrderCard extends StatelessWidget {
-  final bool isCompleted;
+  final ProjectModel project;
+  final String currentUserId;
 
-  const OrderCard({super.key, required this.isCompleted});
+  const OrderCard({
+    super.key,
+    required this.project,
+    required this.currentUserId,
+  });
+
+  String _humanStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'in-progress':
+        return 'In Progress';
+      case 'pending':
+        return 'Pending';
+      case 'completed':
+        return 'Completed';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isCompleted = project.status.toLowerCase() == 'completed';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -99,11 +173,15 @@ class OrderCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Logo Design Project",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  project.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
               Container(
@@ -113,12 +191,12 @@ class OrderCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: isCompleted
-                      ? AppColors.success.withOpacity(0.1)
-                      : AppColors.warning.withOpacity(0.1),
+                      ? AppColors.success.withValues(alpha: 0.1)
+                      : AppColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  isCompleted ? "Completed" : "In Progress",
+                  _humanStatus(project.status),
                   style: TextStyle(
                     fontSize: 12,
                     color: isCompleted ? AppColors.success : AppColors.warning,
@@ -132,12 +210,12 @@ class OrderCard extends StatelessWidget {
 
           // 👤 Mentor Info
           Row(
-            children: const [
+            children: [
               CircleAvatar(radius: 20),
               SizedBox(width: 10),
               Text(
-                "Ayesha Khan",
-                style: TextStyle(color: AppColors.textSecondary),
+                project.category ?? 'Project',
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -152,7 +230,7 @@ class OrderCard extends StatelessWidget {
                 const Text("Progress", style: TextStyle(fontSize: 12)),
                 const SizedBox(height: 6),
                 LinearProgressIndicator(
-                  value: 0.6,
+                  value: (project.progress.clamp(0, 100)) / 100,
                   color: AppColors.primary,
                   backgroundColor: AppColors.surface,
                 ),
@@ -165,9 +243,9 @@ class OrderCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "\$50",
-                style: TextStyle(
+              Text(
+                '\$${project.budget.toStringAsFixed(0)}',
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
@@ -176,7 +254,17 @@ class OrderCard extends StatelessWidget {
               isCompleted
                   ? TextButton(onPressed: () {}, child: const Text("Review"))
                   : ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ClientOrderDetailScreen(
+                              userId: currentUserId,
+                              projectId: project.id,
+                            ),
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                       ),

@@ -25,30 +25,30 @@ class PaymentModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'projectId': projectId,
-      'fromUserId': fromUserId,
-      'toUserId': toUserId,
+      'project_id': projectId,
+      'from_user_id': fromUserId,
+      'to_user_id': toUserId,
       'amount': amount,
       'status': status,
       'method': method,
-      'createdAt': createdAt.toIso8601String(),
-      'stripePaymentIntentId': stripePaymentIntentId,
-      'receiptUrl': receiptUrl,
+      'created_at': createdAt.toIso8601String(),
+      'stripe_payment_intent_id': stripePaymentIntentId,
+      'receipt_url': receiptUrl,
     };
   }
 
   factory PaymentModel.fromMap(Map<String, dynamic> map, String id) {
     return PaymentModel(
       id: id,
-      projectId: map['projectId'] ?? '',
-      fromUserId: map['fromUserId'] ?? '',
-      toUserId: map['toUserId'] ?? '',
+      projectId: map['project_id'] ?? map['projectId'] ?? '',
+      fromUserId: map['from_user_id'] ?? map['fromUserId'] ?? '',
+      toUserId: map['to_user_id'] ?? map['toUserId'] ?? '',
       amount: (map['amount'] ?? 0.0).toDouble(),
       status: map['status'] ?? 'pending',
       method: map['method'] ?? 'card',
-      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
-      stripePaymentIntentId: map['stripePaymentIntentId'],
-      receiptUrl: map['receiptUrl'],
+      createdAt: _parseDateTime(map['created_at'] ?? map['createdAt']) ?? DateTime.now(),
+      stripePaymentIntentId: map['stripe_payment_intent_id'] ?? map['stripePaymentIntentId'],
+      receiptUrl: map['receipt_url'] ?? map['receiptUrl'],
     );
   }
 

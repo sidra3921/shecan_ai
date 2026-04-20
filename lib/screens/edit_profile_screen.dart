@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -69,12 +68,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (_) {
       // Keep defaults if fetch fails.
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -194,12 +192,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       );
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
       }
-      setState(() {
-        _isSaving = false;
-      });
     }
   }
 

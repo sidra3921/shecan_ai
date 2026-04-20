@@ -12,6 +12,7 @@ class OrderCard extends StatelessWidget {
   final bool isActive;
 
   const OrderCard({
+    super.key,
     required this.title,
     required this.client,
     required this.price,
@@ -45,7 +46,7 @@ class OrderCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -75,8 +76,8 @@ class OrderCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isActive
-                        ? AppColors.warning.withOpacity(0.2)
-                        : AppColors.success.withOpacity(0.2),
+                        ? AppColors.warning.withValues(alpha: 0.2)
+                        : AppColors.success.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

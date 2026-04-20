@@ -1,19 +1,19 @@
-/// ⚠️ DEPRECATED: Use SupabaseAuthService instead
-/// This file is kept for backward compatibility only
-/// All new code should use SupabaseAuthService from 'supabase_auth_service.dart'
+// DEPRECATED: Use SupabaseAuthService instead.
+// This file is kept for backward compatibility only.
+// All new code should use SupabaseAuthService from 'supabase_auth_service.dart'.
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  @deprecated
+  @Deprecated('Use SupabaseAuthService.currentUser instead')
   Object? get currentUser => throw UnsupportedError('Use SupabaseAuthService instead');
   
-  @deprecated
+  @Deprecated('Use SupabaseAuthService.currentUserId instead')
   String? get currentUserId => throw UnsupportedError('Use SupabaseAuthService instead');
   
-  @deprecated
+  @Deprecated('Use SupabaseAuthService.isAuthenticated instead')
   bool get isAuthenticated => throw UnsupportedError('Use SupabaseAuthService instead');
 
   @Deprecated('Use SupabaseAuthService instead')

@@ -1,906 +1,466 @@
-import 'dart:math' as math;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/project_model.dart';
+import '../models/mentor_gig_model.dart';
 import '../models/user_model.dart';
-import '../models/saved_gig_model.dart';
-import '../models/view_history_model.dart';
-import '../models/recommendation_filter_model.dart';
-import 'firestore_service.dart';
+import 'supabase_database_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class ProjectApplication {
+  final String id;
+  final String projectId;
+  final String applicantId;
+  final String applicantName;
+  final String applicantEmail;
+  final String status;
+  final String? coverNote;
+  final DateTime createdAt;
+
+  ProjectApplication({
+    required this.id,
+    required this.projectId,
+    required this.applicantId,
+    required this.applicantName,
+    required this.applicantEmail,
+    required this.status,
+    this.coverNote,
+    required this.createdAt,
+  });
+}
 
 class RecommendedGig {
   final ProjectModel project;
   final UserModel client;
-  final double matchScore; // 0-100
+  final double matchScore;
+  final bool isSaved;
+  final bool isApplied;
+  final bool isViewed;
   final List<String> matchedSkills;
   final List<String> missingSkills;
-  final double? distance; // Distance in km from user
-  final String? locationDisplay; // Display location (city, country)
-  final int? daysUntilDeadline; // Days until project deadline
-  final bool isSaved; // Whether user saved this project
-  final bool isViewed; // Whether user viewed this project
-  final bool isApplied; // Whether user applied to this project
+  final int? daysUntilDeadline;
+  final String? locationDisplay;
+  final double? distance;
 
   RecommendedGig({
     required this.project,
     required this.client,
     required this.matchScore,
-    required this.matchedSkills,
-    required this.missingSkills,
-    this.distance,
-    this.locationDisplay,
-    this.daysUntilDeadline,
     this.isSaved = false,
-    this.isViewed = false,
     this.isApplied = false,
+    this.isViewed = false,
+    this.matchedSkills = const [],
+    this.missingSkills = const [],
+    this.daysUntilDeadline,
+    this.locationDisplay,
+    this.distance,
   });
 }
 
-class _MatchResult {
-  final double score;
+class MentorGigRecommendation {
+  final MentorGigModel gig;
+  final UserModel mentor;
+  final double matchScore;
   final List<String> matchedSkills;
   final List<String> missingSkills;
 
-  _MatchResult({
-    required this.score,
-    required this.matchedSkills,
-    required this.missingSkills,
+  MentorGigRecommendation({
+    required this.gig,
+    required this.mentor,
+    required this.matchScore,
+    this.matchedSkills = const [],
+    this.missingSkills = const [],
+  });
+}
+
+class MentorGigDraft {
+  final String title;
+  final String description;
+  final List<String> suggestedSkills;
+
+  MentorGigDraft({
+    required this.title,
+    required this.description,
+    required this.suggestedSkills,
   });
 }
 
 class RecommendationService {
-  final FirestoreService _firestore = FirestoreService();
+  static final RecommendationService _instance = RecommendationService._internal();
+  factory RecommendationService() => _instance;
+  RecommendationService._internal();
 
-  /// Calculate distance between two coordinates using Haversine formula (in km)
-  double _calculateDistance(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
-  ) {
-    const double earthRadius = 6371; // Radius in km
-    final double dLat = _toRad(lat2 - lat1);
-    final double dLon = _toRad(lon2 - lon1);
+  final SupabaseDatabaseService _db = SupabaseDatabaseService();
 
-    final double a =
-        (math.sin(dLat / 2) * math.sin(dLat / 2)) +
-        (math.cos(_toRad(lat1)) *
-            math.cos(_toRad(lat2)) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2));
+  Future<String> createMentorGig(MentorGigModel gig) async {
+    try {
+      final response = await _db.insert('mentor_gigs', gig.toMap());
+      return response['id'].toString();
+    } on PostgrestException catch (e) {
+      final missingTable = (e.code == 'PGRST205') ||
+          e.message.toLowerCase().contains('could not find the table') ||
+          e.message.toLowerCase().contains('mentor_gigs');
 
-    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    return earthRadius * c;
-  }
-
-  double _toRad(double degree) {
-    return degree * (3.14159265359 / 180.0);
-  }
-
-  /// Get location display string from user
-  String _getLocationDisplay(UserModel user) {
-    if (user.city != null && user.country != null) {
-      return '${user.city}, ${user.country}';
-    } else if (user.city != null) {
-      return user.city!;
-    } else if (user.country != null) {
-      return user.country!;
-    } else if (user.address != null) {
-      return user.address!;
+      if (missingTable) {
+        throw Exception(
+          'mentor_gigs table is missing in Supabase. Run SUPABASE_RLS_HARDENING.sql (section 10) or MENTOR_GIGS_SETUP.sql, then try again.',
+        );
+      }
+      rethrow;
     }
-    return 'Location not specified';
   }
 
-  /// Get AI-powered gig recommendations for a user
+  MentorGigDraft generateMentorGigDraft({
+    required String niche,
+    required List<String> selectedSkills,
+  }) {
+    final cleanNiche = niche.trim();
+    final titleNiche = cleanNiche.isEmpty ? 'Professional Services' : cleanNiche;
+    final skills = selectedSkills.isEmpty
+        ? _inferSkillsFromNiche(cleanNiche)
+        : selectedSkills;
+
+    final title = '${_capitalize(titleNiche)} Mentor for Quality Delivery';
+    final description =
+        'I help clients with ${titleNiche.toLowerCase()} projects from planning to execution. '
+        'My focus is on clear communication, reliable delivery, and practical results. '
+        'I can support projects requiring ${skills.take(4).join(', ')}.';
+
+    return MentorGigDraft(
+      title: title,
+      description: description,
+      suggestedSkills: skills,
+    );
+  }
+
+  Future<List<MentorGigRecommendation>> getMentorGigRecommendationsForProject({
+    required String projectId,
+    int limit = 10,
+  }) async {
+    try {
+      final project = await _db.getProject(projectId);
+      if (project == null) return [];
+
+      final rows = await _db.query(
+        'mentor_gigs',
+        filters: {'is_active': true},
+        orderBy: 'created_at',
+        ascending: false,
+        limit: limit * 4,
+      );
+
+      final recommendations = <MentorGigRecommendation>[];
+
+      for (final row in rows) {
+        final gig = MentorGigModel.fromMap(row, row['id'].toString());
+        final mentor = await _db.getUser(gig.mentorId);
+        if (mentor == null) continue;
+
+        final matchedSkills = _matchSkills(project.skills, gig.skills);
+        final missingSkills = _missingProjectSkills(project.skills, gig.skills);
+        final skillScore = _skillMatchScore(project.skills, gig.skills);
+        final budgetScore = _budgetFitScore(project.budget, gig.hourlyRate);
+        final totalScore = (skillScore * 0.8) + (budgetScore * 0.2);
+
+        recommendations.add(
+          MentorGigRecommendation(
+            gig: gig,
+            mentor: mentor,
+            matchScore: totalScore.clamp(0, 100),
+            matchedSkills: matchedSkills,
+            missingSkills: missingSkills,
+          ),
+        );
+      }
+
+      recommendations.sort((a, b) => b.matchScore.compareTo(a.matchScore));
+      return recommendations.take(limit).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<RecommendedGig>> getGigRecommendations({
     required String userId,
     int limit = 15,
-    RecommendationFilterModel? filters,
   }) async {
     try {
-      final user = await _firestore.getUser(userId);
+      final user = await _db.getUser(userId);
       if (user == null) return [];
 
-      final userFilters = filters ?? await getUserPreferences(userId);
-      final filter = userFilters ?? RecommendationFilterModel();
-
-      final projects = await _firestore.streamAvailableProjects().first;
-
-      final availableProjects = projects
-          .where((p) => p.mentorId == null && p.clientId != userId)
-          .toList();
-
-      final savedGigs = await getSavedGigs(userId);
-      final savedProjectIds = savedGigs.map((g) => g.projectId).toSet();
-      final viewHistory = await getViewHistory(userId);
-      final viewedProjectIds = viewHistory.map((v) => v.projectId).toSet();
-      final appliedProjectIds = viewHistory
-          .where((v) => v.applied)
-          .map((v) => v.projectId)
-          .toSet();
+      final rawProjects = await _db.query(
+        'projects',
+        filters: {'status': 'pending'},
+        orderBy: 'created_at',
+        ascending: false,
+        limit: limit * 3,
+      );
 
       final recommendations = <RecommendedGig>[];
-      for (final project in availableProjects) {
-        final client = await _firestore.getUser(project.clientId);
+      for (final row in rawProjects) {
+        final project = ProjectModel.fromMap(row, row['id'].toString());
+        if (project.clientId == userId) continue;
+
+        final client = await _db.getUser(project.clientId);
         if (client == null) continue;
 
-        double? distance;
-        if (user.latitude != null &&
-            user.longitude != null &&
-            client.latitude != null &&
-            client.longitude != null) {
-          distance = _calculateDistance(
-            user.latitude!,
-            user.longitude!,
-            client.latitude!,
-            client.longitude!,
-          );
-        }
-
-        final matchResult = _calculateMatchScore(user.skills, project.skills);
-        final daysUntilDeadline = calculateDaysUntilDeadline(project.deadline);
-        final locationDisplay = _getLocationDisplay(client);
-
-        final isSaved = savedProjectIds.contains(project.id);
-        final isViewed = viewedProjectIds.contains(project.id);
-        final isApplied = appliedProjectIds.contains(project.id);
+        final score = _calculateSimpleMatch(user, project);
+        final days = project.deadline.difference(DateTime.now()).inDays;
+        final matched = _matchedSkills(user, project);
+        final missing = _missingSkills(user, project);
 
         recommendations.add(
           RecommendedGig(
             project: project,
             client: client,
-            matchScore: matchResult.score,
-            matchedSkills: matchResult.matchedSkills,
-            missingSkills: matchResult.missingSkills,
-            distance: distance,
-            locationDisplay: locationDisplay,
-            daysUntilDeadline: daysUntilDeadline,
-            isSaved: isSaved,
-            isViewed: isViewed,
-            isApplied: isApplied,
+            matchScore: score,
+            isSaved: false,
+            isApplied: false,
+            isViewed: false,
+            matchedSkills: matched,
+            missingSkills: missing,
+            daysUntilDeadline: days,
+            locationDisplay: _locationText(project),
+            distance: user.distanceTo(
+              project.latitude,
+              project.longitude,
+            ),
           ),
         );
       }
 
-      recommendations.sort((a, b) {
-        if (a.matchScore != b.matchScore) {
-          return b.matchScore.compareTo(a.matchScore);
-        }
-
-        final aDistance = a.distance ?? double.infinity;
-        final bDistance = b.distance ?? double.infinity;
-        if (aDistance != bDistance) {
-          return aDistance.compareTo(bDistance);
-        }
-
-        if (a.project.budget != b.project.budget) {
-          return b.project.budget.compareTo(a.project.budget);
-        }
-
-        return b.client.rating.compareTo(a.client.rating);
-      });
-
-      final filtered = applyFilters(recommendations, filter);
-      return filtered.take(limit).toList();
+      recommendations.sort((a, b) => b.matchScore.compareTo(a.matchScore));
+      return recommendations.take(limit).toList();
     } catch (e) {
-      print('Error getting recommendations: $e');
       return [];
     }
   }
 
-  /// Apply filters to recommendations
-  List<RecommendedGig> applyFilters(
-    List<RecommendedGig> recommendations,
-    RecommendationFilterModel filter,
-  ) {
-    return recommendations.where((gig) {
-      if (gig.distance != null) {
-        if (gig.distance! < filter.minDistance ||
-            gig.distance! > filter.maxDistance) {
-          return false;
-        }
-      } else if (filter.showOnlyNearby) {
-        return false;
-      }
-
-      if (gig.project.budget < filter.minBudget ||
-          gig.project.budget > filter.maxBudget) {
-        return false;
-      }
-
-      if (gig.daysUntilDeadline != null) {
-        if (gig.daysUntilDeadline! > filter.maxDaysUntilDeadline) {
-          return false;
-        }
-      }
-
-      if (filter.preferredSkills.isNotEmpty) {
-        final hasSkill = filter.preferredSkills.any(
-          (skill) => gig.matchedSkills.any(
-            (s) => s.toLowerCase() == skill.toLowerCase(),
-          ),
-        );
-        if (!hasSkill) return false;
-      }
-
-      if (filter.preferredCategories.isNotEmpty &&
-          gig.project.category != null) {
-        if (!filter.preferredCategories.contains(gig.project.category)) {
-          return false;
-        }
-      }
-
-      if (filter.experienceLevel != null &&
-          gig.project.experienceLevel != null) {
-        if (gig.project.experienceLevel != filter.experienceLevel) {
-          return false;
-        }
-      }
-
-      if (filter.showOnlyUrgent && !gig.project.isUrgent) {
-        return false;
-      }
-
-      return true;
-    }).toList();
-  }
-
-  /// Save a project for later
   Future<void> saveGig({
     required String userId,
     required ProjectModel project,
-    String? notes,
   }) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('savedGigs')
-          .add(
-            SavedGigModel(
-              id: '',
-              userId: userId,
-              projectId: project.id,
-              projectTitle: project.title,
-              notes: notes,
-            ).toMap(),
-          );
-    } catch (e) {
-      print('Error saving gig: $e');
-    }
+    await _db.insert('saved_gigs', {
+      'user_id': userId,
+      'project_id': project.id,
+      'project_title': project.title,
+      'saved_at': DateTime.now().toIso8601String(),
+    });
   }
 
-  /// Unsave a project
   Future<void> unsaveGig({
     required String userId,
     required String projectId,
   }) async {
-    try {
-      final query = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('savedGigs')
-          .where('projectId', isEqualTo: projectId)
-          .get();
-
-      for (final doc in query.docs) {
-        await doc.reference.delete();
-      }
-    } catch (e) {
-      print('Error unsaving gig: $e');
+    final rows = await _db.query(
+      'saved_gigs',
+      filters: {'user_id': userId, 'project_id': projectId},
+      limit: 1,
+    );
+    if (rows.isNotEmpty) {
+      await _db.delete('saved_gigs', rows.first['id'].toString());
     }
   }
 
-  /// Get all saved gigs
-  Future<List<SavedGigModel>> getSavedGigs(String userId) async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('savedGigs')
-          .orderBy('savedAt', descending: true)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => SavedGigModel.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print('Error getting saved gigs: $e');
-      return [];
-    }
-  }
-
-  /// Check if gig is saved
-  Future<bool> isGigSaved({
-    required String userId,
-    required String projectId,
-  }) async {
-    try {
-      final query = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('savedGigs')
-          .where('projectId', isEqualTo: projectId)
-          .limit(1)
-          .get();
-
-      return query.docs.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Track project view or application
   Future<void> trackProjectView({
     required String userId,
     required ProjectModel project,
     bool applied = false,
   }) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('viewHistory')
-          .add(
-            ViewHistoryModel(
-              id: '',
-              userId: userId,
-              projectId: project.id,
-              projectTitle: project.title,
-              applied: applied,
-            ).toMap(),
-          );
-    } catch (e) {
-      print('Error tracking view: $e');
-    }
+    await _db.insert('view_history', {
+      'user_id': userId,
+      'project_id': project.id,
+      'project_title': project.title,
+      'viewed_at': DateTime.now().toIso8601String(),
+      'applied': applied,
+    });
   }
 
-  /// Get view history
-  Future<List<ViewHistoryModel>> getViewHistory(
-    String userId, {
-    int limit = 50,
-  }) async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('viewHistory')
-          .orderBy('viewedAt', descending: true)
-          .limit(limit)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => ViewHistoryModel.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print('Error getting view history: $e');
-      return [];
-    }
-  }
-
-  /// Save user preferences
-  Future<void> savePreferences({
+  Future<bool> hasAppliedForProject({
     required String userId,
-    required RecommendationFilterModel preferences,
+    required String projectId,
   }) async {
     try {
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'recommendationPreferences': preferences.toMap(),
-      });
-    } catch (e) {
-      print('Error saving preferences: $e');
+      final rows = await _db.query(
+        'project_applications',
+        filters: {'applicant_id': userId, 'project_id': projectId},
+        limit: 1,
+      );
+      return rows.isNotEmpty;
+    } catch (_) {
+      return false;
     }
   }
 
-  /// Get user preferences
-  Future<RecommendationFilterModel?> getUserPreferences(String userId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
-
-      final preferences = doc.data()?['recommendationPreferences'];
-      if (preferences != null) {
-        return RecommendationFilterModel.fromMap(
-          preferences as Map<String, dynamic>,
-        );
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// Calculate days until deadline
-  int calculateDaysUntilDeadline(DateTime deadline) {
-    return deadline.difference(DateTime.now()).inDays;
-  }
-
-  /// Get deadline urgency string
-  String getDeadlineUrgency(int daysLeft) {
-    if (daysLeft < 0) return 'Overdue';
-    if (daysLeft == 0) return 'Today';
-    if (daysLeft == 1) return 'Tomorrow';
-    if (daysLeft <= 7) return 'This week';
-    if (daysLeft <= 14) return 'Next week';
-    if (daysLeft <= 30) return 'This month';
-    return '$daysLeft days left';
-  }
-
-  /// Calculate match score
-  _MatchResult _calculateMatchScore(
-    List<String> userSkills,
-    List<String> projectSkills,
-  ) {
-    if (projectSkills.isEmpty) {
-      return _MatchResult(score: 50.0, matchedSkills: [], missingSkills: []);
-    }
-
-    final userSkillsLower = userSkills.map((s) => s.toLowerCase()).toSet();
-    final projectSkillsLower = projectSkills
-        .map((s) => s.toLowerCase())
-        .toList();
-
-    final matchedSkills = <String>[];
-    final missingSkills = <String>[];
-
-    for (final skill in projectSkillsLower) {
-      if (userSkillsLower.contains(skill)) {
-        matchedSkills.add(skill);
-      } else {
-        missingSkills.add(skill);
-      }
-    }
-
-    final matchPercentage =
-        (matchedSkills.length / projectSkillsLower.length) * 100;
-    double score = matchPercentage;
-
-    if (userSkills.length > projectSkillsLower.length) {
-      score = (score + 10).clamp(0.0, 100.0);
-    }
-
-    return _MatchResult(
-      score: score,
-      matchedSkills: matchedSkills,
-      missingSkills: missingSkills,
+  Future<void> applyForProject({
+    required String userId,
+    required ProjectModel project,
+    String? coverNote,
+  }) async {
+    final alreadyApplied = await hasAppliedForProject(
+      userId: userId,
+      projectId: project.id,
     );
+    if (alreadyApplied) return;
+
+    final applicant = await _db.getUser(userId);
+
+    await _db.insert('project_applications', {
+      'project_id': project.id,
+      'client_id': project.clientId,
+      'applicant_id': userId,
+      'applicant_name': applicant?.displayName,
+      'applicant_email': applicant?.email,
+      'cover_note': coverNote,
+      'status': 'pending',
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
   }
 
-  /// Get mentor recommendations
-  Future<List<RecommendedGig>> getMentorRecommendations({
-    required String mentorId,
-    int limit = 10,
-    RecommendationFilterModel? filters,
-  }) async {
+  Future<List<ProjectApplication>> getProjectApplications(String projectId) async {
     try {
-      final mentor = await _firestore.getUser(mentorId);
-      if (mentor == null || mentor.userType != 'mentor') return [];
+      final rows = await _db.query(
+        'project_applications',
+        filters: {'project_id': projectId},
+        orderBy: 'created_at',
+        ascending: false,
+      );
 
-      final userFilters = filters ?? await getUserPreferences(mentorId);
-      final filter = userFilters ?? RecommendationFilterModel();
+      return rows.map((row) {
+        final applicantName = (row['applicant_name'] as String?)?.trim();
+        final applicantEmail = (row['applicant_email'] as String?)?.trim();
 
-      final projects = await _firestore.streamAvailableProjects().first;
-      final availableProjects = projects
-          .where((p) => p.mentorId == null)
-          .toList();
-
-      final savedGigs = await getSavedGigs(mentorId);
-      final savedProjectIds = savedGigs.map((g) => g.projectId).toSet();
-      final viewHistory = await getViewHistory(mentorId);
-      final viewedProjectIds = viewHistory.map((v) => v.projectId).toSet();
-      final appliedProjectIds = viewHistory
-          .where((v) => v.applied)
-          .map((v) => v.projectId)
-          .toSet();
-
-      final recommendations = <RecommendedGig>[];
-      for (final project in availableProjects) {
-        final client = await _firestore.getUser(project.clientId);
-        if (client == null) continue;
-
-        double? distance;
-        if (mentor.latitude != null &&
-            mentor.longitude != null &&
-            client.latitude != null &&
-            client.longitude != null) {
-          distance = _calculateDistance(
-            mentor.latitude!,
-            mentor.longitude!,
-            client.latitude!,
-            client.longitude!,
-          );
-        }
-
-        final matchResult = _calculateMatchScore(mentor.skills, project.skills);
-        final daysUntilDeadline = calculateDaysUntilDeadline(project.deadline);
-        final locationDisplay = _getLocationDisplay(client);
-
-        final isSaved = savedProjectIds.contains(project.id);
-        final isViewed = viewedProjectIds.contains(project.id);
-        final isApplied = appliedProjectIds.contains(project.id);
-
-        recommendations.add(
-          RecommendedGig(
-            project: project,
-            client: client,
-            matchScore: matchResult.score,
-            matchedSkills: matchResult.matchedSkills,
-            missingSkills: matchResult.missingSkills,
-            distance: distance,
-            locationDisplay: locationDisplay,
-            daysUntilDeadline: daysUntilDeadline,
-            isSaved: isSaved,
-            isViewed: isViewed,
-            isApplied: isApplied,
-          ),
+        return ProjectApplication(
+          id: row['id'].toString(),
+          projectId: row['project_id']?.toString() ?? projectId,
+          applicantId: row['applicant_id']?.toString() ?? '',
+          applicantName: (applicantName == null || applicantName.isEmpty)
+              ? 'Mentor'
+              : applicantName,
+          applicantEmail: applicantEmail ?? '',
+          status: (row['status']?.toString() ?? 'pending').toLowerCase(),
+          coverNote: row['cover_note']?.toString(),
+          createdAt:
+              DateTime.tryParse(row['created_at']?.toString() ?? '') ??
+              DateTime.now(),
         );
-      }
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
 
-      recommendations.sort((a, b) {
-        if (a.matchScore != b.matchScore) {
-          return b.matchScore.compareTo(a.matchScore);
-        }
-        final aDistance = a.distance ?? double.infinity;
-        final bDistance = b.distance ?? double.infinity;
-        if (aDistance != bDistance) {
-          return aDistance.compareTo(bDistance);
-        }
-        if (a.project.budget != b.project.budget) {
-          return b.project.budget.compareTo(a.project.budget);
-        }
-        return b.client.rating.compareTo(a.client.rating);
+  Future<void> decideOnApplication({
+    required String projectId,
+    required String applicationId,
+    required String applicantId,
+    required bool accept,
+  }) async {
+    final status = accept ? 'accepted' : 'rejected';
+
+    await _db.update('project_applications', applicationId, {
+      'status': status,
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+
+    if (!accept) return;
+
+    await _db.updateProject(projectId, {
+      'status': 'in-progress',
+      'freelancer_id': applicantId,
+      'progress': 5,
+    });
+
+    final pendingRows = await _db.query(
+      'project_applications',
+      filters: {'project_id': projectId, 'status': 'pending'},
+    );
+
+    for (final row in pendingRows) {
+      final id = row['id']?.toString();
+      if (id == null || id == applicationId) continue;
+      await _db.update('project_applications', id, {
+        'status': 'rejected',
+        'updated_at': DateTime.now().toIso8601String(),
       });
-
-      final filtered = applyFilters(recommendations, filter);
-      return filtered.take(limit).toList();
-    } catch (e) {
-      print('Error getting mentor recommendations: $e');
-      return [];
     }
   }
 
-  /// Get similar project recommendations
-  Future<List<RecommendedGig>> getSimilarProjectRecommendations({
-    required String userId,
-    required ProjectModel referenceProject,
-    int limit = 5,
-    RecommendationFilterModel? filters,
-  }) async {
-    try {
-      final user = await _firestore.getUser(userId);
-      if (user == null) return [];
-
-      final userFilters = filters ?? await getUserPreferences(userId);
-      final filter = userFilters ?? RecommendationFilterModel();
-
-      final projects = await _firestore.streamAvailableProjects().first;
-      final availableProjects = projects
-          .where(
-            (p) =>
-                p.mentorId == null &&
-                p.clientId != userId &&
-                p.id != referenceProject.id,
-          )
-          .toList();
-
-      final savedGigs = await getSavedGigs(userId);
-      final savedProjectIds = savedGigs.map((g) => g.projectId).toSet();
-      final viewHistory = await getViewHistory(userId);
-      final viewedProjectIds = viewHistory.map((v) => v.projectId).toSet();
-      final appliedProjectIds = viewHistory
-          .where((v) => v.applied)
-          .map((v) => v.projectId)
-          .toSet();
-
-      final recommendations = <RecommendedGig>[];
-      for (final project in availableProjects) {
-        final client = await _firestore.getUser(project.clientId);
-        if (client == null) continue;
-
-        double? distance;
-        if (user.latitude != null &&
-            user.longitude != null &&
-            client.latitude != null &&
-            client.longitude != null) {
-          distance = _calculateDistance(
-            user.latitude!,
-            user.longitude!,
-            client.latitude!,
-            client.longitude!,
-          );
-        }
-
-        final matchResult = _calculateMatchScore(user.skills, project.skills);
-
-        double adjustedScore = matchResult.score;
-        final similarSkills = referenceProject.skills.where(
-          (s1) =>
-              project.skills.any((s2) => s1.toLowerCase() == s2.toLowerCase()),
-        );
-        if (similarSkills.isNotEmpty) {
-          adjustedScore = (matchResult.score + 15).clamp(0.0, 100.0);
-        }
-
-        final daysUntilDeadline = calculateDaysUntilDeadline(project.deadline);
-        final locationDisplay = _getLocationDisplay(client);
-
-        final isSaved = savedProjectIds.contains(project.id);
-        final isViewed = viewedProjectIds.contains(project.id);
-        final isApplied = appliedProjectIds.contains(project.id);
-
-        recommendations.add(
-          RecommendedGig(
-            project: project,
-            client: client,
-            matchScore: adjustedScore,
-            matchedSkills: matchResult.matchedSkills,
-            missingSkills: matchResult.missingSkills,
-            distance: distance,
-            locationDisplay: locationDisplay,
-            daysUntilDeadline: daysUntilDeadline,
-            isSaved: isSaved,
-            isViewed: isViewed,
-            isApplied: isApplied,
-          ),
-        );
-      }
-
-      recommendations.sort((a, b) {
-        if (a.matchScore != b.matchScore) {
-          return b.matchScore.compareTo(a.matchScore);
-        }
-        final aDistance = a.distance ?? double.infinity;
-        final bDistance = b.distance ?? double.infinity;
-        return aDistance.compareTo(bDistance);
-      });
-
-      final filtered = applyFilters(recommendations, filter);
-      return filtered.take(limit).toList();
-    } catch (e) {
-      print('Error getting similar projects: $e');
-      return [];
-    }
+  String getDeadlineUrgency(int daysUntilDeadline) {
+    if (daysUntilDeadline < 0) return 'Expired';
+    if (daysUntilDeadline <= 2) return 'Urgent';
+    if (daysUntilDeadline <= 7) return 'Soon';
+    return 'Open';
   }
 
-  /// Get smart recommendations based on user behavior and activity
-  Future<List<RecommendedGig>> getSmartRecommendations({
-    required String userId,
-    int limit = 10,
-  }) async {
-    try {
-      final user = await _firestore.getUser(userId);
-      if (user == null) return [];
-
-      // Get user's activity history
-      final viewHistory = await getViewHistory(userId, limit: 100);
-
-      // Analyze patterns - extract most clicked project categories/skills
-      final categoryFrequency = <String, int>{};
-      final skillFrequency = <String, int>{};
-
-      for (final view in viewHistory) {
-        // Get project details to extract category
-        final projectQuery = await FirebaseFirestore.instance
-            .collection('projects')
-            .where(FieldPath.documentId, isEqualTo: view.projectId)
-            .limit(1)
-            .get();
-
-        if (projectQuery.docs.isNotEmpty) {
-          final projectData = projectQuery.docs.first.data();
-          final category = projectData['category'] as String?;
-          if (category != null) {
-            categoryFrequency[category] =
-                (categoryFrequency[category] ?? 0) + 1;
-          }
-
-          final skills = projectData['skills'] as List?;
-          if (skills != null) {
-            for (final skill in skills) {
-              skillFrequency[skill] = (skillFrequency[skill] ?? 0) + 1;
-            }
-          }
-        }
-      }
-
-      // Get projects in top categories
-      final topCategories = categoryFrequency.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-      final topSkills = skillFrequency.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-
-      // Fetch recommendations matching user behavior
-      final projects = await _firestore.streamAvailableProjects().first;
-      final recommendations = <RecommendedGig>[];
-      final savedGigs = await getSavedGigs(userId);
-      final savedProjectIds = savedGigs.map((g) => g.projectId).toSet();
-
-      for (final project in projects) {
-        if (project.mentorId != null || project.clientId == userId) continue;
-
-        // Score higher if in preferred categories or skills
-        double behavioralScore = 0.0;
-
-        if (topCategories.isNotEmpty) {
-          for (int i = 0; i < topCategories.length && i < 3; i++) {
-            if (project.category == topCategories[i].key) {
-              behavioralScore += (10 - (i * 2)).toDouble();
-            }
-          }
-        }
-
-        if (topSkills.isNotEmpty) {
-          for (int i = 0; i < topSkills.length && i < 3; i++) {
-            if (project.skills.contains(topSkills[i].key)) {
-              behavioralScore += (10 - (i * 2)).toDouble();
-            }
-          }
-        }
-
-        if (behavioralScore > 0) {
-          final client = await _firestore.getUser(project.clientId);
-          if (client == null) continue;
-
-          double? distance;
-          if (user.latitude != null &&
-              user.longitude != null &&
-              client.latitude != null &&
-              client.longitude != null) {
-            distance = _calculateDistance(
-              user.latitude!,
-              user.longitude!,
-              client.latitude!,
-              client.longitude!,
-            );
-          }
-
-          final matchResult = _calculateMatchScore(user.skills, project.skills);
-          final daysUntilDeadline = calculateDaysUntilDeadline(
-            project.deadline,
-          );
-          final locationDisplay = _getLocationDisplay(client);
-
-          // Combine skill match with behavioral score
-          final finalScore = matchResult.score + behavioralScore;
-
-          recommendations.add(
-            RecommendedGig(
-              project: project,
-              client: client,
-              matchScore: finalScore,
-              matchedSkills: matchResult.matchedSkills,
-              missingSkills: matchResult.missingSkills,
-              distance: distance,
-              locationDisplay: locationDisplay,
-              daysUntilDeadline: daysUntilDeadline,
-              isSaved: savedProjectIds.contains(project.id),
-              isViewed: false,
-              isApplied: false,
-            ),
-          );
-        }
-      }
-
-      // Sort by score
-      recommendations.sort((a, b) => b.matchScore.compareTo(a.matchScore));
-      return recommendations.take(limit).toList();
-    } catch (e) {
-      print('Error getting smart recommendations: $e');
-      return [];
-    }
+  double _calculateSimpleMatch(UserModel user, ProjectModel project) {
+    if (project.skills.isEmpty || user.skills.isEmpty) return 50;
+    final userSkills = user.skills.map((s) => s.toLowerCase()).toSet();
+    final projectSkills = project.skills.map((s) => s.toLowerCase()).toSet();
+    final overlap = userSkills.intersection(projectSkills).length;
+    final ratio = overlap / projectSkills.length;
+    return (50 + (ratio * 50)).clamp(0, 100).toDouble();
   }
 
-  /// Get trending projects (most viewed/applied by users like you)
-  Future<List<RecommendedGig>> getTrendingProjects({
-    required String userId,
-    int limit = 10,
-  }) async {
-    try {
-      final user = await _firestore.getUser(userId);
-      if (user == null) return [];
+  List<String> _matchedSkills(UserModel user, ProjectModel project) {
+    final userSkills = user.skills.map((s) => s.toLowerCase()).toSet();
+    return project.skills.where((s) => userSkills.contains(s.toLowerCase())).toList();
+  }
 
-      // Get view history stats
-      final viewCountMap = <String, int>{};
-      final allViewHistory = await FirebaseFirestore.instance
-          .collection('users')
-          .get();
+  List<String> _missingSkills(UserModel user, ProjectModel project) {
+    final userSkills = user.skills.map((s) => s.toLowerCase()).toSet();
+    return project.skills.where((s) => !userSkills.contains(s.toLowerCase())).toList();
+  }
 
-      for (final userDoc in allViewHistory.docs) {
-        try {
-          final userViewHistory = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userDoc.id)
-              .collection('viewHistory')
-              .get();
-
-          for (final view in userViewHistory.docs) {
-            final projectId = view.data()['projectId'] as String?;
-            if (projectId != null) {
-              viewCountMap[projectId] = (viewCountMap[projectId] ?? 0) + 1;
-            }
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-
-      // Get projects in order of popularity
-      final trendingProjectIds = viewCountMap.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-
-      final recommendations = <RecommendedGig>[];
-      final savedGigs = await getSavedGigs(userId);
-      final savedProjectIds = savedGigs.map((g) => g.projectId).toSet();
-
-      for (final entry in trendingProjectIds.take(50)) {
-        try {
-          final project = await FirebaseFirestore.instance
-              .collection('projects')
-              .doc(entry.key)
-              .get();
-
-          if (!project.exists) continue;
-
-          final projectData = ProjectModel.fromMap(
-            project.data() as Map<String, dynamic>,
-            project.id,
-          );
-
-          if (projectData.mentorId != null || projectData.clientId == userId)
-            continue;
-
-          final client = await _firestore.getUser(projectData.clientId);
-          if (client == null) continue;
-
-          double? distance;
-          if (user.latitude != null &&
-              user.longitude != null &&
-              client.latitude != null &&
-              client.longitude != null) {
-            distance = _calculateDistance(
-              user.latitude!,
-              user.longitude!,
-              client.latitude!,
-              client.longitude!,
-            );
-          }
-
-          final matchResult = _calculateMatchScore(
-            user.skills,
-            projectData.skills,
-          );
-          final daysUntilDeadline = calculateDaysUntilDeadline(
-            projectData.deadline,
-          );
-          final locationDisplay = _getLocationDisplay(client);
-
-          recommendations.add(
-            RecommendedGig(
-              project: projectData,
-              client: client,
-              matchScore: matchResult.score,
-              matchedSkills: matchResult.matchedSkills,
-              missingSkills: matchResult.missingSkills,
-              distance: distance,
-              locationDisplay: locationDisplay,
-              daysUntilDeadline: daysUntilDeadline,
-              isSaved: savedProjectIds.contains(projectData.id),
-              isViewed: false,
-              isApplied: false,
-            ),
-          );
-
-          if (recommendations.length >= limit) break;
-        } catch (e) {
-          continue;
-        }
-      }
-
-      return recommendations;
-    } catch (e) {
-      print('Error getting trending projects: $e');
-      return [];
+  String _locationText(ProjectModel project) {
+    final city = project.city?.trim();
+    final country = project.country?.trim();
+    if (city != null && city.isNotEmpty && country != null && country.isNotEmpty) {
+      return '$city, $country';
     }
+    if (city != null && city.isNotEmpty) return city;
+    if (country != null && country.isNotEmpty) return country;
+    return 'Remote';
+  }
+
+  List<String> _inferSkillsFromNiche(String niche) {
+    final lower = niche.toLowerCase();
+    if (lower.contains('design')) return ['Logo Design', 'UI/UX', 'Branding'];
+    if (lower.contains('develop')) return ['Flutter', 'Web Development', 'API'];
+    if (lower.contains('market')) return ['Digital Marketing', 'SEO', 'Social Media'];
+    if (lower.contains('write')) return ['Content Writing', 'Copywriting', 'Editing'];
+    return ['Communication', 'Project Planning', 'Client Support'];
+  }
+
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
+  }
+
+  List<String> _matchSkills(List<String> projectSkills, List<String> gigSkills) {
+    final project = projectSkills.map((e) => e.toLowerCase()).toSet();
+    return gigSkills.where((s) => project.contains(s.toLowerCase())).toList();
+  }
+
+  List<String> _missingProjectSkills(List<String> projectSkills, List<String> gigSkills) {
+    final gig = gigSkills.map((e) => e.toLowerCase()).toSet();
+    return projectSkills.where((s) => !gig.contains(s.toLowerCase())).toList();
+  }
+
+  double _skillMatchScore(List<String> projectSkills, List<String> gigSkills) {
+    if (projectSkills.isEmpty) return 50;
+    if (gigSkills.isEmpty) return 20;
+
+    final overlap = _matchSkills(projectSkills, gigSkills).length;
+    final ratio = overlap / projectSkills.length;
+    return (ratio * 100).clamp(0, 100).toDouble();
+  }
+
+  double _budgetFitScore(double projectBudget, double gigHourlyRate) {
+    if (projectBudget <= 0 || gigHourlyRate <= 0) return 50;
+    final ratio = gigHourlyRate / projectBudget;
+    if (ratio <= 0.15) return 100;
+    if (ratio <= 0.25) return 85;
+    if (ratio <= 0.35) return 70;
+    if (ratio <= 0.50) return 55;
+    return 35;
   }
 }

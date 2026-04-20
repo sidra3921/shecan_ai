@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class DisputeModel {
   final String id;
   final String projectId;
@@ -28,31 +26,44 @@ class DisputeModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'projectId': projectId,
-      'raisedBy': raisedBy,
-      'againstUser': againstUser,
+      'project_id': projectId,
+      'raised_by': raisedBy,
+      'against_user': againstUser,
       'reason': reason,
       'status': status,
       'participants': participants,
       'messages': messages,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'resolvedAt': resolvedAt != null ? Timestamp.fromDate(resolvedAt!) : null,
+      'created_at': createdAt.toIso8601String(),
+      'resolved_at': resolvedAt?.toIso8601String(),
     };
   }
 
   factory DisputeModel.fromMap(Map<String, dynamic> map, String id) {
     return DisputeModel(
       id: id,
-      projectId: map['projectId'] ?? '',
-      raisedBy: map['raisedBy'] ?? '',
-      againstUser: map['againstUser'] ?? '',
+      projectId: map['project_id'] ?? map['projectId'] ?? '',
+      raisedBy:
+          map['raised_by'] ?? map['raisedBy'] ?? map['initiator_id'] ?? '',
+      againstUser: map['against_user'] ?? map['againstUser'] ?? '',
       reason: map['reason'] ?? '',
       status: map['status'] ?? 'open',
       participants: List<String>.from(map['participants'] ?? []),
       messages: List<Map<String, dynamic>>.from(map['messages'] ?? []),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
-      resolvedAt: (map['resolvedAt'] as Timestamp?)?.toDate(),
+      createdAt: _parseDateTime(map['created_at'] ?? map['createdAt']),
+      resolvedAt: _parseDateTime(map['resolved_at'] ?? map['resolvedAt']),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   // Helper getters

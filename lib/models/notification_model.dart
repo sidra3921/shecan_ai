@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class NotificationModel {
   final String id;
   final String userId;
@@ -23,26 +21,41 @@ class NotificationModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'userId': userId,
+      'user_id': userId,
       'type': type,
       'title': title,
       'message': message,
+      'content': message,
+      'is_read': read,
       'read': read,
       'data': data,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'created_at': createdAt.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 
   factory NotificationModel.fromMap(Map<String, dynamic> map, String id) {
     return NotificationModel(
       id: id,
-      userId: map['userId'] ?? '',
+      userId: map['user_id'] ?? map['userId'] ?? '',
       type: map['type'] ?? '',
       title: map['title'] ?? '',
-      message: map['message'] ?? '',
-      read: map['read'] ?? false,
+      message: map['message'] ?? map['content'] ?? '',
+      read: map['is_read'] ?? map['read'] ?? false,
       data: map['data'] as Map<String, dynamic>?,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['created_at'] ?? map['createdAt']) ?? DateTime.now(),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 }

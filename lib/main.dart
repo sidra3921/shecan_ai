@@ -1,85 +1,102 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
-import 'constants/app_theme.dart';
+
 import 'config/app_config.dart';
+import 'constants/app_theme.dart';
 import 'screens/splash_screen.dart';
-import 'services/notification_service.dart';
-import 'services/chat_service.dart';
-import 'services/video_consultation_service.dart';
-import 'services/assessment_service.dart';
-import 'services/payment_service.dart';
-import 'services/review_service.dart';
 import 'services/ai_service.dart';
+import 'services/assessment_service.dart';
+import 'services/chat_service.dart';
+import 'services/notification_service.dart';
+import 'services/payment_service.dart';
 import 'services/recommendation_service.dart';
+import 'services/review_service.dart';
+import 'services/session_service.dart';
+import 'services/supabase_auth_service.dart';
+import 'services/supabase_database_service.dart';
+import 'services/supabase_service.dart';
+import 'services/supabase_storage_service.dart';
+import 'services/video_consultation_service.dart';
 
 final getIt = GetIt.instance;
+final supabaseService = SupabaseService();
 
-// Background message handler (must be top-level function)
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  print('Handling background message: ${message.messageId}');
-}
-
-/// Setup all service dependencies (Dependency Injection)
 void _setupServiceLocator() {
-  // Register Tier 1 feature services
-  getIt.registerSingleton<ChatService>(ChatService());
-  getIt.registerSingleton<VideoConsultationService>(VideoConsultationService());
-  getIt.registerSingleton<AssessmentService>(AssessmentService());
-  getIt.registerSingleton<PaymentService>(PaymentService());
-  getIt.registerSingleton<ReviewService>(ReviewService());
-  getIt.registerSingleton<AIService>(AIService());
-  getIt.registerSingleton<RecommendationService>(RecommendationService());
+	if (!getIt.isRegistered<SupabaseService>()) {
+		getIt.registerSingleton<SupabaseService>(supabaseService);
+	}
+	if (!getIt.isRegistered<SupabaseAuthService>()) {
+		getIt.registerSingleton<SupabaseAuthService>(SupabaseAuthService());
+	}
+	if (!getIt.isRegistered<SupabaseDatabaseService>()) {
+		getIt.registerSingleton<SupabaseDatabaseService>(SupabaseDatabaseService());
+	}
+	if (!getIt.isRegistered<SupabaseStorageService>()) {
+		getIt.registerSingleton<SupabaseStorageService>(SupabaseStorageService());
+	}
+
+	if (!getIt.isRegistered<SessionService>()) {
+		getIt.registerSingleton<SessionService>(SessionService());
+	}
+	if (!getIt.isRegistered<ChatService>()) {
+		getIt.registerSingleton<ChatService>(ChatService());
+	}
+	if (!getIt.isRegistered<VideoConsultationService>()) {
+		getIt.registerSingleton<VideoConsultationService>(
+			VideoConsultationService(),
+		);
+	}
+	if (!getIt.isRegistered<AssessmentService>()) {
+		getIt.registerSingleton<AssessmentService>(AssessmentService());
+	}
+	if (!getIt.isRegistered<PaymentService>()) {
+		getIt.registerSingleton<PaymentService>(PaymentService());
+	}
+	if (!getIt.isRegistered<ReviewService>()) {
+		getIt.registerSingleton<ReviewService>(ReviewService());
+	}
+	if (!getIt.isRegistered<AIService>()) {
+		getIt.registerSingleton<AIService>(AIService());
+	}
+	if (!getIt.isRegistered<RecommendationService>()) {
+		getIt.registerSingleton<RecommendationService>(RecommendationService());
+	}
 }
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+	WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp();
+	try {
+		await supabaseService.initialize(
+			supabaseUrl: 'https://ieawgfrukdlhsbjcnjhk.supabase.co',
+			supabaseAnonKey: 'sb_publishable_kMwVg-kJ-688DXmlOvf_bg_9ItvRCa9',
+		);
+	} catch (e) {
+		debugPrint('Supabase initialization failed: $e');
+	}
 
-  // Enable Firestore offline persistence
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
+	await NotificationService().initialize();
 
-  // Initialize FCM background handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+	_setupServiceLocator();
+	await getIt<SessionService>().initialize();
 
-  // Initialize notification service
-  await NotificationService().initialize();
+	if (!AppConfig.validateApiKeys()) {
+		debugPrint('Using fallback/mock settings for unconfigured API keys.');
+	}
 
-  // Setup Service Locator for Tier 1 features
-  _setupServiceLocator();
-
-  // Log configuration (development only)
-  AppConfig.logConfiguration();
-
-  // Validate API keys
-  if (!AppConfig.validateApiKeys()) {
-    if (AppConfig.enableDetailedLogging) {
-      print('⚠️ Using mock data for unconfonfigured APIs');
-    }
-  }
-
-  runApp(const MyApp());
+	runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+	const MyApp({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SheCan AI',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const SplashScreen(),
-    );
-  }
+	@override
+	Widget build(BuildContext context) {
+		return MaterialApp(
+			title: 'SheCan AI',
+			debugShowCheckedModeBanner: false,
+			theme: AppTheme.lightTheme,
+			home: const SplashScreen(),
+		);
+	}
 }

@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ReviewModel {
   final String id;
   final String projectId;
@@ -36,40 +34,50 @@ class ReviewModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'projectId': projectId,
-      'reviewerId': reviewerId,
-      'reviewedUserId': reviewedUserId,
+      'project_id': projectId,
+      'reviewer_id': reviewerId,
+      'reviewed_user_id': reviewedUserId,
       'rating': rating,
       'comment': comment,
       'tags': tags,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
       'verified': verified,
-      'helpfulCount': helpfulCount,
-      'fraudStatus': fraudStatus,
-      'fraudReason': fraudReason,
-      'attachmentUrls': attachmentUrls,
+      'helpful_count': helpfulCount,
+      'fraud_status': fraudStatus,
+      'fraud_reason': fraudReason,
+      'attachment_urls': attachmentUrls,
     };
   }
 
   factory ReviewModel.fromMap(Map<String, dynamic> map, String id) {
     return ReviewModel(
       id: id,
-      projectId: map['projectId'] ?? '',
-      reviewerId: map['reviewerId'] ?? '',
-      reviewedUserId: map['reviewedUserId'] ?? '',
+      projectId: map['project_id'] ?? map['projectId'] ?? '',
+      reviewerId: map['reviewer_id'] ?? map['reviewerId'] ?? '',
+      reviewedUserId: map['reviewed_user_id'] ?? map['reviewedUserId'] ?? '',
       rating: (map['rating'] ?? 0.0).toDouble(),
       comment: map['comment'] ?? '',
       tags: List<String>.from(map['tags'] ?? []),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: map['updatedAt'] != null
-          ? (map['updatedAt'] as Timestamp).toDate()
-          : null,
+      createdAt: _parseDateTime(map['created_at'] ?? map['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(map['updated_at'] ?? map['updatedAt']),
       verified: map['verified'] ?? false,
-      helpfulCount: map['helpfulCount'] ?? 0,
-      fraudStatus: map['fraudStatus'] ?? 'none',
-      fraudReason: map['fraudReason'],
-      attachmentUrls: List<String>.from(map['attachmentUrls'] ?? []),
+      helpfulCount: map['helpful_count'] ?? map['helpfulCount'] ?? 0,
+      fraudStatus: map['fraud_status'] ?? map['fraudStatus'] ?? 'none',
+      fraudReason: map['fraud_reason'] ?? map['fraudReason'],
+      attachmentUrls: List<String>.from(map['attachment_urls'] ?? map['attachmentUrls'] ?? []),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 }

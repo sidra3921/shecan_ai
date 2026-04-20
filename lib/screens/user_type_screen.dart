@@ -8,61 +8,52 @@ class UserTypeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, color: AppColors.primary),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Spacer(),
-              // Title
               const Text(
                 'Who are you joining as?',
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
+
               const SizedBox(height: 8),
+
               const Text(
                 'Select a user type',
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
+
               const SizedBox(height: 60),
-              // User Type Options
+
               Row(
                 children: [
                   Expanded(
                     child: _UserTypeCard(
                       icon: Icons.woman,
-                      title: 'Continue as Mentor',
-                      subtitle: 'Trainer and Mentor',
+                      title: 'Continue as Women',
+                      subtitle: 'Trainer and Women',
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const SignInScreen(userType: 'Mentor'),
+                            builder: (_) =>
+                                const SignInScreen(userType: 'Women'),
                           ),
                         );
                       },
                     ),
                   ),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: _UserTypeCard(
                       icon: Icons.business_center,
@@ -72,7 +63,7 @@ class UserTypeScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
+                            builder: (_) =>
                                 const SignInScreen(userType: 'Client'),
                           ),
                         );
@@ -81,27 +72,7 @@ class UserTypeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const Spacer(),
-              // Footer
-              RichText(
-                textAlign: TextAlign.center,
-                text: const TextSpan(
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                  children: [
-                    TextSpan(text: 'Already on SheCan? '),
-                    TextSpan(
-                      text: 'Log In',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+
               const SizedBox(height: 20),
             ],
           ),
@@ -111,7 +82,7 @@ class UserTypeScreen extends StatelessWidget {
   }
 }
 
-class _UserTypeCard extends StatelessWidget {
+class _UserTypeCard extends StatefulWidget {
   final IconData icon;
   final String title;
   final String subtitle;
@@ -125,48 +96,79 @@ class _UserTypeCard extends StatelessWidget {
   });
 
   @override
+  State<_UserTypeCard> createState() => _UserTypeCardState();
+}
+
+class _UserTypeCardState extends State<_UserTypeCard> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.pinkBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primaryLight, width: 1),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+    return SizedBox(
+      height: 220,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          widget.onTap(); // ✅ Navigation trigger
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.all(20),
+          transform: Matrix4.diagonal3Values(
+            _isPressed ? 0.96 : 1.0,
+            _isPressed ? 0.96 : 1.0,
+            1.0,
+          ), // 👈 press effect
+          decoration: BoxDecoration(
+            gradient: AppColors.primaryGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.25),
+                blurRadius: _isPressed ? 10 : 20,
+                offset: Offset(0, _isPressed ? 5 : 10),
               ),
-              child: Icon(icon, size: 32, color: AppColors.primary),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 65,
+                height: 65,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(widget.icon, size: 32, color: Colors.white),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
+
+              const SizedBox(height: 16),
+
+              Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+
+              const SizedBox(height: 6),
+
+              Text(
+                widget.subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

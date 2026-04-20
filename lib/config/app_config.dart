@@ -7,6 +7,10 @@
 /// - Use environment variables or secure storage in production
 /// - Use test keys for development and testing
 
+library app_config;
+
+import 'package:flutter/foundation.dart';
+
 class AppConfig {
   /// ============ STRIPE PAYMENT CONFIGURATION ============
   ///
@@ -67,12 +71,44 @@ class AppConfig {
   /// OpenAI Model to use
   static const String openaiModel = 'gpt-3.5-turbo'; // or 'gpt-4' for advanced
 
-  /// ============ FIREBASE CONFIGURATION ============
+  /// ============ GEMINI CONFIGURATION ============
   ///
-  /// Usually configured via google-services.json (Android) and GoogleService-Info.plist (iOS)
-  /// Already set up if Firebase is initialized in main.dart
-  static const String firebaseProjectId =
-      'shecan-ai-project'; // Update with your project
+  /// Pass at runtime with:
+  /// flutter run --dart-define=GEMINI_API_KEY=your_key_here
+  /// Optional:
+  /// flutter run --dart-define=GEMINI_MODEL=gemini-2.5-flash-lite
+  static const String geminiApiKey = String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: '',
+  );
+
+  /// Development-only fallback when dart-define is not provided.
+  /// Keep placeholder in git and set real key only in local environment.
+  static const String geminiApiKeyFromCode =
+      'AIzaSyDi2D4__HW8OzEtet6GMo5Wtou3tW0HRIk';
+
+  /// Default model selected for free-tier friendly usage.
+  static const String geminiModel = String.fromEnvironment(
+    'GEMINI_MODEL',
+    defaultValue: 'gemini-2.5-flash-lite',
+  );
+
+  static String get resolvedGeminiApiKey {
+    final fromDefine = geminiApiKey.trim();
+    if (fromDefine.isNotEmpty) return fromDefine;
+
+    final fromCode = geminiApiKeyFromCode.trim();
+    if (fromCode.isNotEmpty && !fromCode.contains('YOUR_')) {
+      return fromCode;
+    }
+
+    return '';
+  }
+
+  /// ============ BACKEND CONFIGURATION ============
+  ///
+  /// Backend is powered by Supabase.
+  static const String backendProvider = 'supabase';
 
   /// ============ APP FEATURE FLAGS ============
   ///
@@ -82,6 +118,9 @@ class AppConfig {
   static const bool enableRealVideoCallsWithTwilio = false;
   static const bool enableRealVideoCallsWithAgora = false;
   static const bool enableRealOpenAI = false; // Uses mock responses instead
+
+  /// Enable Gemini when a key is supplied via --dart-define.
+  static bool get enableRealGemini => resolvedGeminiApiKey.isNotEmpty;
 
   /// ============ PAYMENT SETTINGS ============
   static const double defaultVideoConsultationPricePerMinute =
@@ -133,6 +172,9 @@ class AppConfig {
     if (openaiApiKey.contains('YOUR_')) {
       warnings.add('⚠️ OpenAI key not configured');
     }
+    if (resolvedGeminiApiKey.isEmpty) {
+      warnings.add('⚠️ Gemini key not configured (GEMINI_API_KEY)');
+    }
     if (getVideoProvider() == 'twilio' && twilioAccountSid.contains('YOUR_')) {
       warnings.add('⚠️ Twilio credentials not configured');
     }
@@ -141,11 +183,11 @@ class AppConfig {
     }
 
     if (warnings.isNotEmpty) {
-      print('\n=== API Configuration Warnings ===');
+      debugPrint('\n=== API Configuration Warnings ===');
       for (final warning in warnings) {
-        print(warning);
+        debugPrint(warning);
       }
-      print('====================================\n');
+      debugPrint('====================================\n');
       return false;
     }
 
@@ -156,17 +198,21 @@ class AppConfig {
   static void logConfiguration() {
     if (!enableDetailedLogging) return;
 
-    print('\n=== SheCan AI Configuration ===');
-    print(
+    debugPrint('\n=== SheCan AI Configuration ===');
+    debugPrint(
       '🚀 Stripe Payments: ${enableRealStripePayments ? "ENABLED" : "DISABLED (Mock)"}',
     );
-    print('📹 Video Provider: ${getVideoProvider()}');
-    print(
+    debugPrint('📹 Video Provider: ${getVideoProvider()}');
+    debugPrint(
       '🤖 OpenAI Integration: ${enableRealOpenAI ? "ENABLED" : "DISABLED (Mock)"}',
     );
-    print('🔐 Firebase Project: $firebaseProjectId');
-    print('📊 Detailed Logging: ${enableDetailedLogging ? "ON" : "OFF"}');
-    print('================================\n');
+    debugPrint(
+      '✨ Gemini Integration: ${enableRealGemini ? "ENABLED" : "DISABLED (No Key)"}',
+    );
+    debugPrint('🧠 Gemini Model: $geminiModel');
+    debugPrint('🔐 Backend: $backendProvider');
+    debugPrint('📊 Detailed Logging: ${enableDetailedLogging ? "ON" : "OFF"}');
+    debugPrint('================================\n');
   }
 }
 
@@ -189,7 +235,7 @@ When asked about features, give practical examples. When unsure, offer to connec
     'How do I get paid?',
     'What projects match my skills?',
     'How do I improve my profile?',
-    'What\s the minimum withdrawal amount?',
+    "What's the minimum withdrawal amount?",
     'How do video consultations work?',
     'Can you help me prepare for a test?',
   ];

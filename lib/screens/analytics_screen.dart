@@ -1,339 +1,226 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:get_it/get_it.dart';
+
 import '../constants/app_colors.dart';
+import '../models/project_model.dart';
+import '../services/supabase_database_service.dart';
 
 class AnalyticsScreen extends StatelessWidget {
-  const AnalyticsScreen({super.key});
+  final String userId;
+  final String userType;
+
+  const AnalyticsScreen({
+    super.key,
+    required this.userId,
+    required this.userType,
+  });
+
+  bool get _isMentor => userType.toLowerCase() == 'mentor';
 
   @override
   Widget build(BuildContext context) {
+    final db = GetIt.instance<SupabaseDatabaseService>();
+    final projectStream = _isMentor
+        ? db.streamFreelancerProjects(userId)
+        : db.streamClientProjects(userId);
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Analytics Dashboard')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text('Analytics')),
+      body: StreamBuilder<List<ProjectModel>>(
+        stream: projectStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Failed to load analytics',
+                style: TextStyle(color: AppColors.error),
+              ),
+            );
+          }
+
+          final projects = snapshot.data ?? const <ProjectModel>[];
+          final completed = projects.where((p) => p.status.toLowerCase() == 'completed').toList();
+          final active = projects.where((p) {
+            final s = p.status.toLowerCase();
+            return s == 'pending' || s == 'in-progress' || s == 'delivered';
+          }).toList();
+
+          final totalCount = projects.length;
+          final completedCount = completed.length;
+          final totalValue = projects.fold<double>(0, (sum, p) => sum + p.budget);
+          final completedValue = completed.fold<double>(0, (sum, p) => sum + p.budget);
+          final avgBudget = totalCount == 0 ? 0 : totalValue / totalCount;
+          final completionRate = totalCount == 0 ? 0 : (completedCount / totalCount) * 100;
+
+          final monthly = _monthlyBuckets(projects);
+          final maxMonthly = monthly.isEmpty
+              ? 1.0
+              : monthly.values.reduce((a, b) => a > b ? a : b);
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _metricCard(
+                    title: _isMentor ? 'Total Jobs' : 'Total Projects',
+                    value: '$totalCount',
+                    icon: Icons.work_outline,
+                  ),
+                  _metricCard(
+                    title: 'Completed',
+                    value: '$completedCount',
+                    icon: Icons.check_circle_outline,
+                  ),
+                  _metricCard(
+                    title: _isMentor ? 'Earnings' : 'Project Value',
+                    value: 'Rs ${(_isMentor ? completedValue : totalValue).toStringAsFixed(0)}',
+                    icon: Icons.payments_outlined,
+                  ),
+                  _metricCard(
+                    title: 'Completion',
+                    value: '${completionRate.toStringAsFixed(0)}%',
+                    icon: Icons.insights_outlined,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _panel(
+                title: 'Pipeline Snapshot',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Active: ${active.length}'),
+                    const SizedBox(height: 4),
+                    Text('Completed: $completedCount'),
+                    const SizedBox(height: 4),
+                    Text('Average Budget: Rs ${avgBudget.toStringAsFixed(0)}'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              _panel(
+                title: 'Monthly Activity (Last 6 Months)',
+                child: SizedBox(
+                  height: 220,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: monthly.entries.map((entry) {
+                      final ratio = maxMonthly == 0 ? 0.0 : entry.value / maxMonthly;
+                      return _bar(entry.key, ratio, entry.value);
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Map<String, double> _monthlyBuckets(List<ProjectModel> projects) {
+    final now = DateTime.now();
+    final keys = <DateTime>[];
+    for (var i = 5; i >= 0; i--) {
+      final d = DateTime(now.year, now.month - i, 1);
+      keys.add(d);
+    }
+
+    final map = <String, double>{
+      for (final k in keys) _monthLabel(k): 0,
+    };
+
+    for (final p in projects) {
+      final monthKey = DateTime(p.createdAt.year, p.createdAt.month, 1);
+      final label = _monthLabel(monthKey);
+      if (map.containsKey(label)) {
+        map[label] = (map[label] ?? 0) + p.budget;
+      }
+    }
+
+    return map;
+  }
+
+  String _monthLabel(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[d.month - 1];
+  }
+
+  Widget _metricCard({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return SizedBox(
+      width: 165,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Stats Row
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    value: '137%',
-                    label: 'User Growth Rate',
-                    icon: Icons.trending_up,
-                    color: AppColors.success,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    value: '92.4%',
-                    label: 'Project Success Rate',
-                    icon: Icons.check_circle,
-                    color: AppColors.info,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    value: 'PKR 874K',
-                    label: 'Total GMV Revenue',
-                    icon: Icons.account_balance_wallet,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // User Growth Chart
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'User Growth Over Time',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 200,
-                      child: LineChart(
-                        LineChartData(
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval: 1,
-                            getDrawingHorizontalLine: (value) {
-                              return FlLine(
-                                color: Colors.grey.withOpacity(0.1),
-                                strokeWidth: 1,
-                              );
-                            },
-                          ),
-                          titlesData: FlTitlesData(show: false),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: [
-                                const FlSpot(0, 1),
-                                const FlSpot(1, 1.3),
-                                const FlSpot(2, 1.8),
-                                const FlSpot(3, 2.2),
-                                const FlSpot(4, 2.5),
-                                const FlSpot(5, 3.1),
-                                const FlSpot(6, 3.5),
-                              ],
-                              isCurved: true,
-                              color: AppColors.primary,
-                              barWidth: 3,
-                              dotData: FlDotData(show: false),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppColors.primary.withOpacity(0.3),
-                                    AppColors.primary.withOpacity(0.0),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Platform Earnings Trend
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Platform Earnings Trend',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 200,
-                      child: LineChart(
-                        LineChartData(
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                          ),
-                          titlesData: FlTitlesData(show: false),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: [
-                                const FlSpot(0, 2),
-                                const FlSpot(1, 2.3),
-                                const FlSpot(2, 2.7),
-                                const FlSpot(3, 3.1),
-                                const FlSpot(4, 3.5),
-                                const FlSpot(5, 4.0),
-                              ],
-                              isCurved: true,
-                              color: AppColors.success,
-                              barWidth: 3,
-                              dotData: FlDotData(show: true),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Project Completion vs Cancellation
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Project Completion vs Cancellation',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 200,
-                      child: BarChart(
-                        BarChartData(
-                          gridData: FlGridData(show: false),
-                          titlesData: FlTitlesData(show: false),
-                          borderData: FlBorderData(show: false),
-                          barGroups: List.generate(6, (index) {
-                            return BarChartGroupData(
-                              x: index,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: (index + 3).toDouble(),
-                                  color: AppColors.success,
-                                  width: 30,
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(6),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Top Skills Distribution
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Top Skills Distribution',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 200,
-                      child: PieChart(
-                        PieChartData(
-                          sections: [
-                            PieChartSectionData(
-                              value: 30,
-                              color: AppColors.primary,
-                              title: '',
-                              radius: 70,
-                            ),
-                            PieChartSectionData(
-                              value: 25,
-                              color: AppColors.info,
-                              title: '',
-                              radius: 70,
-                            ),
-                            PieChartSectionData(
-                              value: 20,
-                              color: AppColors.success,
-                              title: '',
-                              radius: 70,
-                            ),
-                            PieChartSectionData(
-                              value: 15,
-                              color: AppColors.warning,
-                              title: '',
-                              radius: 70,
-                            ),
-                            PieChartSectionData(
-                              value: 10,
-                              color: Colors.purple,
-                              title: '',
-                              radius: 70,
-                            ),
-                          ],
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 40,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(height: 6),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 2),
+            Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
           ],
         ),
       ),
     );
   }
-}
 
-class _StatCard extends StatelessWidget {
-  final String value;
-  final String label;
-  final IconData icon;
-  final Color color;
+  Widget _panel({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
 
-  const _StatCard({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+  Widget _bar(String label, double ratio, double value) {
+    final safeRatio = ratio.clamp(0.0, 1.0);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(
+          value == 0 ? '-' : '${(value / 1000).toStringAsFixed(1)}k',
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: 18,
+          height: 140 * safeRatio,
+          decoration: BoxDecoration(
+            gradient: AppColors.primaryGradient,
+            borderRadius: BorderRadius.circular(6),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 11)),
+      ],
     );
   }
 }

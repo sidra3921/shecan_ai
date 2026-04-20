@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ChatMessage {
   final String id;
   final String conversationId;
@@ -11,6 +9,7 @@ class ChatMessage {
   final DateTime timestamp;
   final List<String> readBy; // User IDs who read this message
   final bool isRead;
+  final DateTime? seenAt;
 
   ChatMessage({
     required this.id,
@@ -23,6 +22,7 @@ class ChatMessage {
     required this.timestamp,
     this.readBy = const [],
     this.isRead = false,
+    this.seenAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,7 +37,23 @@ class ChatMessage {
       'timestamp': timestamp,
       'readBy': readBy,
       'isRead': isRead,
+      'seenAt': seenAt?.toIso8601String(),
     };
+  }
+
+  bool isSeenBy(String userId) => readBy.contains(userId);
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   factory ChatMessage.fromMap(Map<String, dynamic> map, String docId) {
@@ -49,14 +65,19 @@ class ChatMessage {
       senderAvatar: map['senderAvatar'] ?? '',
       content: map['content'] ?? '',
       attachmentUrls: List<String>.from(map['attachmentUrls'] ?? []),
-      timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      timestamp: _parseDateTime(map['timestamp']) ?? DateTime.now(),
       readBy: List<String>.from(map['readBy'] ?? []),
       isRead: map['isRead'] ?? false,
+      seenAt: _parseDateTime(map['seenAt']),
     );
   }
 }
 
 class Conversation {
+  static const String groupNameMetaKey = '__group_name';
+  static const String groupAdminMetaKey = '__group_admin_id';
+  static const String groupAvatarMetaKey = '__group_avatar';
+
   final String id;
   final List<String> participantIds; // User IDs involved
   final Map<String, String> participantNames; // userId -> displayName
@@ -83,15 +104,61 @@ class Conversation {
     this.projectTitle,
   });
 
+  Map<String, String> get visibleParticipantNames {
+    return Map<String, String>.fromEntries(
+      participantNames.entries.where((e) => !e.key.startsWith('__')),
+    );
+  }
+
+  Map<String, String> get visibleParticipantAvatars {
+    return Map<String, String>.fromEntries(
+      participantAvatars.entries.where((e) => !e.key.startsWith('__')),
+    );
+  }
+
+  bool get isGroup {
+    final namedGroup = (participantNames[groupNameMetaKey] ?? '').trim().isNotEmpty;
+    return namedGroup || visibleParticipantNames.length > 2;
+  }
+
+  String get groupName {
+    final name = (participantNames[groupNameMetaKey] ?? '').trim();
+    if (name.isNotEmpty) return name;
+    return 'Community Group';
+  }
+
+  String get groupAdminId {
+    return (participantNames[groupAdminMetaKey] ?? '').trim();
+  }
+
+  String get groupAvatarUrl {
+    return (participantAvatars[groupAvatarMetaKey] ?? '').trim();
+  }
+
+  bool canManageGroup(String userId) {
+    if (!isGroup) return false;
+    return groupAdminId.isNotEmpty && groupAdminId == userId;
+  }
+
+  String get displayTitle {
+    if (isGroup) return groupName;
+    return otherUserName ?? 'Mentor';
+  }
+
+  String get displaySubtitle {
+    if (isGroup) return '${visibleParticipantNames.length} members';
+    return '';
+  }
+
   // Helper getters for easier access to other user info
   String? get otherUserName {
-    if (participantNames.isEmpty) return null;
-    return participantNames.values.first;
+    if (visibleParticipantNames.isEmpty) return null;
+    return visibleParticipantNames.values.first;
   }
 
   String? get otherUserAvatar {
-    if (participantAvatars.isEmpty) return null;
-    return participantAvatars.values.first;
+    if (visibleParticipantAvatars.isEmpty) return null;
+    return visibleParticipantAvatars.values.first;
   }
 
   Map<String, dynamic> toMap() {
@@ -110,6 +177,19 @@ class Conversation {
     };
   }
 
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   factory Conversation.fromMap(Map<String, dynamic> map, String docId) {
     return Conversation(
       id: docId,
@@ -119,12 +199,10 @@ class Conversation {
         map['participantAvatars'] ?? {},
       ),
       lastMessage: map['lastMessage'] ?? '',
-      lastMessageTimestamp:
-          (map['lastMessageTimestamp'] as Timestamp?)?.toDate() ??
-          DateTime.now(),
+      lastMessageTimestamp: _parseDateTime(map['lastMessageTimestamp']) ?? DateTime.now(),
       lastMessageSenderId: map['lastMessageSenderId'] ?? '',
       unreadCount: map['unreadCount'] ?? 0,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
       projectId: map['projectId'],
       projectTitle: map['projectTitle'],
     );

@@ -57,12 +57,30 @@ class _ClientMainScreenState extends State<ClientMainScreen> {
               setState(() => _currentIndex = index);
             },
             items: [
-              const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Explore'),
-              const BottomNavigationBarItem(icon: Icon(Icons.school), label: 'My Learning'),
-              const BottomNavigationBarItem(icon: Icon(Icons.work), label: 'Orders'),
-              const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
-              const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.search),
+                label: 'Explore',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.school),
+                label: 'My Learning',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.work),
+                label: 'Orders',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.chat_bubble_outline),
+                label: 'Chats',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
             ],
           ),
         );

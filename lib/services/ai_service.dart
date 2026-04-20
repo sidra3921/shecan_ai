@@ -67,21 +67,23 @@ class AIService {
           : AppConfig.geminiModel.trim();
 
       final uri = Uri.parse('$_geminiBaseUrl/$model:generateContent?key=$key');
-      final response = await http.post(
-        uri,
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'role': 'user',
-              'parts': [
-                {'text': prompt},
+      final response = await http
+          .post(
+            uri,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'contents': [
+                {
+                  'role': 'user',
+                  'parts': [
+                    {'text': prompt},
+                  ],
+                },
               ],
-            },
-          ],
-          'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 512},
-        }),
-      ).timeout(const Duration(seconds: 25));
+              'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 512},
+            }),
+          )
+          .timeout(const Duration(seconds: 25));
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         debugPrint('Gemini error ${response.statusCode}: ${response.body}');

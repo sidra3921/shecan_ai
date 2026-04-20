@@ -480,10 +480,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (widget.isAI) {
       final historyBeforeSend = messages
           .where((item) => (item['text'] ?? '').trim().isNotEmpty)
-          .map((item) => <String, String>{
-                'role': item['role'] ?? 'user',
-                'text': item['text'] ?? '',
-              })
+          .map(
+            (item) => <String, String>{
+              'role': item['role'] ?? 'user',
+              'text': item['text'] ?? '',
+            },
+          )
           .toList()
           .reversed
           .take(10)

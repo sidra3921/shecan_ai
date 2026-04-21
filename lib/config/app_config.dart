@@ -85,7 +85,7 @@ class AppConfig {
   /// Development-only fallback when dart-define is not provided.
   /// Keep placeholder in git and set real key only in local environment.
   static const String geminiApiKeyFromCode =
-      'AIzaSyDi2D4__HW8OzEtet6GMo5Wtou3tW0HRIk';
+      'AIzaSyDyuiz8ok_CxTqO9vy_rnL7sIDUiqirKgQ';
 
   /// Default model selected for free-tier friendly usage.
   static const String geminiModel = String.fromEnvironment(

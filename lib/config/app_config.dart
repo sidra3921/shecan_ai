@@ -1,13 +1,11 @@
-/// Application Configuration File
-///
-/// This file contains all API keys and configuration values for Tier 1 features.
-///
-/// ⚠️ SECURITY NOTE:
-/// - NEVER commit real API keys to version control
-/// - Use environment variables or secure storage in production
-/// - Use test keys for development and testing
-
-library app_config;
+// Application Configuration File
+//
+// This file contains all API keys and configuration values for Tier 1 features.
+//
+// SECURITY NOTE:
+// - NEVER commit real API keys to version control
+// - Use environment variables or secure storage in production
+// - Use test keys for development and testing
 
 import 'package:flutter/foundation.dart';
 
@@ -82,11 +80,6 @@ class AppConfig {
     defaultValue: '',
   );
 
-  /// Development-only fallback when dart-define is not provided.
-  /// Keep placeholder in git and set real key only in local environment.
-  static const String geminiApiKeyFromCode =
-      'AIzaSyDyuiz8ok_CxTqO9vy_rnL7sIDUiqirKgQ';
-
   /// Default model selected for free-tier friendly usage.
   static const String geminiModel = String.fromEnvironment(
     'GEMINI_MODEL',
@@ -94,15 +87,7 @@ class AppConfig {
   );
 
   static String get resolvedGeminiApiKey {
-    final fromDefine = geminiApiKey.trim();
-    if (fromDefine.isNotEmpty) return fromDefine;
-
-    final fromCode = geminiApiKeyFromCode.trim();
-    if (fromCode.isNotEmpty && !fromCode.contains('YOUR_')) {
-      return fromCode;
-    }
-
-    return '';
+    return geminiApiKey.trim();
   }
 
   /// ============ BACKEND CONFIGURATION ============

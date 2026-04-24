@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Run (selected device) with Gemini key",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${input:geminiApiKey}"
+      ]
+    },
+    {
+      "name": "Flutter Run Chrome with Gemini key",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "flutterMode": "debug",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=GEMINI_API_KEY=${input:geminiApiKey}"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "geminiApiKey",
+      "type": "promptString",
+      "description": "Gemini API key for this run",
+      "password": true
+    }
+  ]
+}

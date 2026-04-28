@@ -15,11 +15,16 @@ class MentorCourseStudentsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Course Students')),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        title: const Text('Course Students'),
+      ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: db.streamMentorCourseStudents(mentorId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -34,9 +39,7 @@ class MentorCourseStudentsScreen extends StatelessWidget {
 
           final items = snapshot.data ?? const <Map<String, dynamic>>[];
           if (items.isEmpty) {
-            return const Center(
-              child: Text('No enrollments yet'),
-            );
+            return const Center(child: Text('No enrollments yet'));
           }
 
           return ListView.builder(
@@ -44,8 +47,10 @@ class MentorCourseStudentsScreen extends StatelessWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];
-              final progress = ((item['progress_percent'] ?? 0) as num).toDouble();
-              final studentName = (item['student_name'] ?? 'Student').toString();
+              final progress = ((item['progress_percent'] ?? 0) as num)
+                  .toDouble();
+              final studentName = (item['student_name'] ?? 'Student')
+                  .toString();
               final courseTitle = (item['course_title'] ?? 'Course').toString();
               final email = (item['student_email'] ?? '').toString();
               final photoUrl = (item['student_photo_url'] ?? '').toString();
@@ -61,7 +66,9 @@ class MentorCourseStudentsScreen extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       backgroundColor: AppColors.surface,
-                      backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                      backgroundImage: photoUrl.isNotEmpty
+                          ? NetworkImage(photoUrl)
+                          : null,
                       child: photoUrl.isEmpty ? const Icon(Icons.person) : null,
                     ),
                     const SizedBox(width: 10),
@@ -75,7 +82,9 @@ class MentorCourseStudentsScreen extends StatelessWidget {
                           ),
                           Text(
                             courseTitle,
-                            style: const TextStyle(color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                           if (email.isNotEmpty)
                             Text(

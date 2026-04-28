@@ -17,11 +17,16 @@ class ClientMyLearningScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('My Learning')),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        title: const Text('My Learning'),
+      ),
       body: StreamBuilder<List<EnrolledCourseItemModel>>(
         stream: db.streamClientEnrolledCourses(userId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -105,7 +110,9 @@ class ClientMyLearningScreen extends StatelessWidget {
                           children: [
                             Text(
                               item.course.title,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(

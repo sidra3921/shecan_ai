@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shecan_ai/screens/onboarding_screen.dart';
 import '../constants/app_colors.dart';
-import 'user_type_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -43,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const UserTypeScreen()),
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
         );
       }
     });
@@ -85,7 +85,9 @@ class _SplashScreenState extends State<SplashScreen>
                             borderRadius: BorderRadius.circular(30),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.35),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.35,
+                                ),
                                 blurRadius: 30,
                                 offset: const Offset(0, 15),
                               ),

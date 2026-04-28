@@ -60,7 +60,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _fillControllers(user);
       } else {
         final authUser = _authService.currentUser;
-        _nameController.text = authUser?.userMetadata?['display_name'] as String? ??
+        _nameController.text =
+            authUser?.userMetadata?['display_name'] as String? ??
             authUser?.email?.split('@').first ??
             '';
         _phoneController.text = authUser?.phone ?? '';
@@ -81,7 +82,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _phoneController.text = user.phone;
     _bioController.text = user.bio;
     _skillsController.text = user.skills.join(', ');
-    _hourlyRateController.text = user.hourlyRate > 0 ? user.hourlyRate.toStringAsFixed(0) : '';
+    _hourlyRateController.text = user.hourlyRate > 0
+        ? user.hourlyRate.toStringAsFixed(0)
+        : '';
     _currentPhotoUrl = user.photoURL;
   }
 
@@ -122,9 +125,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final userId = _authService.currentUserId;
     if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in again.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please sign in again.')));
       return;
     }
 
@@ -142,7 +145,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             bytes: _pickedImageBytes!,
           );
         } catch (e) {
-          uploadWarning = 'Profile photo upload failed. Other changes were saved.';
+          uploadWarning =
+              'Profile photo upload failed. Other changes were saved.';
           debugPrint('Profile photo upload failed: $e');
         }
       } else if (_pickedImageFile != null) {
@@ -152,12 +156,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             imageFile: _pickedImageFile!,
           );
         } catch (e) {
-          uploadWarning = 'Profile photo upload failed. Other changes were saved.';
+          uploadWarning =
+              'Profile photo upload failed. Other changes were saved.';
           debugPrint('Profile photo upload failed: $e');
         }
       }
 
-      final hourlyRate = double.tryParse(_hourlyRateController.text.trim()) ?? 0.0;
+      final hourlyRate =
+          double.tryParse(_hourlyRateController.text.trim()) ?? 0.0;
       final skills = _parseSkills(_skillsController.text);
 
       await _dbService.updateUser(userId, {
@@ -179,7 +185,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         return;
       }
       final message = uploadWarning ?? 'Profile saved successfully.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) {
@@ -214,6 +222,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text('Edit Profile'),
       ),
       body: _isLoading
@@ -233,16 +243,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               radius: 52,
                               backgroundColor: AppColors.pinkBackground,
                               backgroundImage: _pickedImageBytes != null
-                                  ? MemoryImage(_pickedImageBytes!) as ImageProvider
+                                  ? MemoryImage(_pickedImageBytes!)
+                                        as ImageProvider
                                   : _pickedImageFile != null
-                                      ? FileImage(_pickedImageFile!)
-                                      : _currentPhotoUrl.isNotEmpty
-                                          ? NetworkImage(_currentPhotoUrl)
-                                          : null,
-                              child: _pickedImageBytes == null &&
+                                  ? FileImage(_pickedImageFile!)
+                                  : _currentPhotoUrl.isNotEmpty
+                                  ? NetworkImage(_currentPhotoUrl)
+                                  : null,
+                              child:
+                                  _pickedImageBytes == null &&
                                       _pickedImageFile == null &&
                                       _currentPhotoUrl.isEmpty
-                                  ? const Icon(Icons.person, size: 56, color: AppColors.primary)
+                                  ? const Icon(
+                                      Icons.person,
+                                      size: 56,
+                                      color: AppColors.primary,
+                                    )
                                   : null,
                             ),
                             Positioned(
@@ -273,7 +289,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         controller: _nameController,
                         decoration: const InputDecoration(
                           labelText: 'Full name',
-                          prefixIcon: Icon(Icons.person_outline),
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: AppColors.primaryDark,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -287,7 +306,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         controller: _phoneController,
                         decoration: const InputDecoration(
                           labelText: 'Phone',
-                          prefixIcon: Icon(Icons.phone_outlined),
+                          prefixIcon: Icon(
+                            Icons.phone_outlined,
+                            color: AppColors.primaryDark,
+                          ),
                         ),
                         keyboardType: TextInputType.phone,
                       ),
@@ -297,7 +319,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Bio',
                           alignLabelWithHint: true,
-                          prefixIcon: Icon(Icons.short_text),
+                          prefixIcon: Icon(
+                            Icons.short_text,
+                            color: AppColors.primaryDark,
+                          ),
                         ),
                         maxLines: 3,
                       ),
@@ -306,7 +331,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         controller: _skillsController,
                         decoration: const InputDecoration(
                           labelText: 'Skills (comma-separated)',
-                          prefixIcon: Icon(Icons.auto_awesome_outlined),
+                          prefixIcon: Icon(
+                            Icons.auto_awesome_outlined,
+                            color: AppColors.primaryDark,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -314,12 +342,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         controller: _hourlyRateController,
                         decoration: const InputDecoration(
                           labelText: 'Hourly rate (PKR)',
-                          prefixIcon: Icon(Icons.currency_rupee),
+                          prefixIcon: Icon(
+                            Icons.currency_rupee,
+                            color: AppColors.primaryDark,
+                          ),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                       ),
                       const SizedBox(height: 28),
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              AppColors.primary, // button background
+                        ),
                         onPressed: _isSaving ? null : _saveProfile,
                         child: _isSaving
                             ? const SizedBox(
@@ -327,10 +364,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
-                            : const Text('Save Changes'),
+                            : const Text(
+                                'Save Changes',
+                                style: TextStyle(color: AppColors.background),
+                              ),
                       ),
                     ],
                   ),

@@ -37,18 +37,16 @@ class _OrdersScreenState extends State<OrdersScreen>
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
-        title: const Text(
-          "My Orders",
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        title: const Text("My Orders"),
         elevation: 0,
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
+          labelColor: AppColors.background,
+          unselectedLabelColor: AppColors.background,
+          indicatorColor: AppColors.background,
           tabs: const [
             Tab(text: "Ongoing"),
             Tab(text: "Completed"),
@@ -107,9 +105,7 @@ class OrdersList extends StatelessWidget {
         if (filtered.isEmpty) {
           return Center(
             child: Text(
-              isCompleted
-                  ? 'No completed orders yet'
-                  : 'No ongoing orders yet',
+              isCompleted ? 'No completed orders yet' : 'No ongoing orders yet',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           );
@@ -169,7 +165,7 @@ class OrderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔥 Title + Status
+          //  Title + Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -208,7 +204,7 @@ class OrderCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // 👤 Mentor Info
+          //  Mentor Info
           Row(
             children: [
               CircleAvatar(radius: 20),
@@ -222,7 +218,7 @@ class OrderCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // 📊 Progress Bar
+          //  Progress Bar
           if (!isCompleted)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +235,7 @@ class OrderCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // 💰 Price + Action
+          //  Price + Action
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -268,7 +264,10 @@ class OrderCard extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                       ),
-                      child: const Text("View"),
+                      child: const Text(
+                        "View",
+                        style: TextStyle(color: AppColors.background),
+                      ),
                     ),
             ],
           ),

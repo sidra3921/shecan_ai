@@ -469,7 +469,11 @@ class _ClientOrderDetailScreenState extends State<ClientOrderDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Order Details')),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        title: const Text('Order Details'),
+      ),
       body: StreamBuilder<ProjectModel?>(
         stream: _db.streamProject(widget.projectId),
         builder: (context, snapshot) {

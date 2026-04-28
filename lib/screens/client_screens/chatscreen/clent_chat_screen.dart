@@ -328,10 +328,10 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text("Chats"),
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
         actions: [
           IconButton(
             onPressed: _isStartingConversation ? null : _showChatCreateOptions,

@@ -14,8 +14,9 @@ class PrivacySecurityScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text("Privacy & Security"),
-        backgroundColor: Colors.transparent,
         elevation: 0,
       ),
 

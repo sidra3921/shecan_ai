@@ -77,7 +77,7 @@ class _SignInScreenState extends State<SignInScreen>
 
       Widget nextScreen;
 
-      // ================= NAVIGATION LOGIC =================
+      //  NAVIGATION LOGIC
 
       if (widget.userType == "Client") {
         nextScreen = const ClientMainScreen();
@@ -93,10 +93,7 @@ class _SignInScreenState extends State<SignInScreen>
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -111,10 +108,11 @@ class _SignInScreenState extends State<SignInScreen>
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -262,7 +260,10 @@ class _SignInScreenState extends State<SignInScreen>
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : Text(isSignUp ? 'Create Account' : 'Sign In'),
+                            : Text(
+                                isSignUp ? 'Create Account' : 'Sign In',
+                                style: TextStyle(color: AppColors.background),
+                              ),
                       ),
                     ),
                   ],

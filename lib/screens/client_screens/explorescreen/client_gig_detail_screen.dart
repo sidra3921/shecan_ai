@@ -211,6 +211,8 @@ class _ClientGigDetailScreenState extends State<ClientGigDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text('Gig Details'),
         actions: [
           if (_currentUserId != null)
@@ -339,14 +341,37 @@ class _ClientGigDetailScreenState extends State<ClientGigDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary, // button bg color
+                        foregroundColor: Colors.white, // text/icon color
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                      ),
+
                       onPressed: _isHiring ? null : () => _hirePackage(p),
+
                       child: _isHiring
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : Text('Hire This Package ($name)'),
+                          : Text(
+                              'Hire This Package ($name)',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],

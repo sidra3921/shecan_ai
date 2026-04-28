@@ -30,7 +30,11 @@ class MentorDashboardScreen extends StatelessWidget {
         final firstName = _firstName(userSnapshot.data?.displayName);
         return Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppBar(title: Text('Hello, $firstName')),
+          appBar: AppBar(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.background,
+            title: Text("Hello, $firstName"),
+          ),
           drawer: _buildDrawer(context),
           body: StreamBuilder<List<MentorGigModel>>(
             stream: db.streamMentorGigs(userId),

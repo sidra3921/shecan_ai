@@ -20,12 +20,11 @@ class Sprint3AiAssistantScreen extends StatefulWidget {
   });
 
   @override
-  State<Sprint3AiAssistantScreen> createState() => _Sprint3AiAssistantScreenState();
+  State<Sprint3AiAssistantScreen> createState() =>
+      _Sprint3AiAssistantScreenState();
 }
 
-class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
-  {
-
+class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen> {
   final _ai = GetIt.instance<AIService>();
   final _db = GetIt.instance<SupabaseDatabaseService>();
 
@@ -118,11 +117,13 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
       final title = draft['title']?.toString() ?? 'AI Draft Project';
       final summary = draft['summary']?.toString() ?? _streamingBriefSummary;
       final category = draft['category']?.toString() ?? _briefCategory;
-      final skills = (draft['recommendedSkills'] as List?)
+      final skills =
+          (draft['recommendedSkills'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
           const <String>[];
-      final estimatedBudget = (draft['estimatedBudget'] as num?)?.toDouble() ?? 25000;
+      final estimatedBudget =
+          (draft['estimatedBudget'] as num?)?.toDouble() ?? 25000;
 
       final project = ProjectModel(
         id: '',
@@ -191,9 +192,9 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -202,18 +203,26 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(title),
-      ),
+      appBar: AppBar(title: Text(title)),
       body: _isMentor ? _proposalTab() : _briefTab(),
     );
   }
 
   Widget _briefTab() {
     final draft = _briefDraft;
-    final milestones = (draft?['milestones'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final success = (draft?['successCriteria'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final skills = (draft?['recommendedSkills'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final milestones =
+        (draft?['milestones'] as List?)?.map((e) => e.toString()).toList() ??
+        const <String>[];
+    final success =
+        (draft?['successCriteria'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const <String>[];
+    final skills =
+        (draft?['recommendedSkills'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const <String>[];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -229,11 +238,20 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
               DropdownButtonFormField<String>(
                 initialValue: _briefCategory,
                 items: const [
-                  DropdownMenuItem(value: 'development', child: Text('Development')),
+                  DropdownMenuItem(
+                    value: 'development',
+                    child: Text('Development'),
+                  ),
                   DropdownMenuItem(value: 'design', child: Text('Design')),
-                  DropdownMenuItem(value: 'marketing', child: Text('Marketing')),
+                  DropdownMenuItem(
+                    value: 'marketing',
+                    child: Text('Marketing'),
+                  ),
                   DropdownMenuItem(value: 'writing', child: Text('Writing')),
-                  DropdownMenuItem(value: 'consulting', child: Text('Consulting')),
+                  DropdownMenuItem(
+                    value: 'consulting',
+                    child: Text('Consulting'),
+                  ),
                 ],
                 onChanged: (value) {
                   if (value == null) return;
@@ -256,7 +274,11 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.auto_awesome),
-                  label: Text(_isGeneratingBrief ? 'Generating Brief...' : 'Generate AI Brief'),
+                  label: Text(
+                    _isGeneratingBrief
+                        ? 'Generating Brief...'
+                        : 'Generate AI Brief',
+                  ),
                 ),
               ),
             ],
@@ -264,7 +286,9 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
         ),
         const SizedBox(height: 12),
         _sectionCard(
-          title: draft == null ? 'Generated Brief' : (draft['title']?.toString() ?? 'Generated Brief'),
+          title: draft == null
+              ? 'Generated Brief'
+              : (draft['title']?.toString() ?? 'Generated Brief'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -279,19 +303,30 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
                   spacing: 8,
                   runSpacing: 8,
                   children: skills
-                      .map((skill) => Chip(label: Text(skill), backgroundColor: AppColors.surface))
+                      .map(
+                        (skill) => Chip(
+                          label: Text(skill),
+                          backgroundColor: AppColors.surface,
+                        ),
+                      )
                       .toList(),
                 ),
               ],
               if (milestones.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('Milestones', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Milestones',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 6),
                 ...milestones.map((m) => Text('• $m')),
               ],
               if (success.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('Success Criteria', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Success Criteria',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 6),
                 ...success.map((m) => Text('• $m')),
               ],
@@ -309,7 +344,8 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
                   ),
                   if (_isClient)
                     ElevatedButton.icon(
-                      onPressed: (_briefDraft == null || _isCreatingDraftProject)
+                      onPressed:
+                          (_briefDraft == null || _isCreatingDraftProject)
                           ? null
                           : _createProjectFromBrief,
                       icon: _isCreatingDraftProject
@@ -320,7 +356,9 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
                             )
                           : const Icon(Icons.post_add),
                       label: Text(
-                        _isCreatingDraftProject ? 'Creating...' : 'Create Draft Project',
+                        _isCreatingDraftProject
+                            ? 'Creating...'
+                            : 'Create Draft Project',
                       ),
                     ),
                 ],
@@ -334,8 +372,14 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
 
   Widget _proposalTab() {
     final draft = _proposalDraft;
-    final deliverables = (draft?['deliverables'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final clarifications = (draft?['clarifications'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final deliverables =
+        (draft?['deliverables'] as List?)?.map((e) => e.toString()).toList() ??
+        const <String>[];
+    final clarifications =
+        (draft?['clarifications'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const <String>[];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -345,16 +389,26 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
           child: Column(
             children: [
               _input(_projectTitleController, 'Project title'),
-              _input(_projectDescController, 'Project description', maxLines: 4),
+              _input(
+                _projectDescController,
+                'Project description',
+                maxLines: 4,
+              ),
               _input(_strengthsController, 'Your strengths and edge'),
               _input(_proposalBudgetController, 'Budget proposal'),
               _input(_proposalTimelineController, 'Delivery timeline'),
               DropdownButtonFormField<String>(
                 initialValue: _proposalTone,
                 items: const [
-                  DropdownMenuItem(value: 'professional', child: Text('Professional')),
+                  DropdownMenuItem(
+                    value: 'professional',
+                    child: Text('Professional'),
+                  ),
                   DropdownMenuItem(value: 'friendly', child: Text('Friendly')),
-                  DropdownMenuItem(value: 'confident', child: Text('Confident')),
+                  DropdownMenuItem(
+                    value: 'confident',
+                    child: Text('Confident'),
+                  ),
                 ],
                 onChanged: (value) {
                   if (value == null) return;
@@ -377,7 +431,11 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.bolt),
-                  label: Text(_isGeneratingProposal ? 'Generating Proposal...' : 'Generate AI Proposal'),
+                  label: Text(
+                    _isGeneratingProposal
+                        ? 'Generating Proposal...'
+                        : 'Generate AI Proposal',
+                  ),
                 ),
               ),
             ],
@@ -396,13 +454,19 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
               ),
               if (deliverables.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('Deliverables', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Deliverables',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 6),
                 ...deliverables.map((d) => Text('• $d')),
               ],
               if (clarifications.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('Clarifications', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Clarifications',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 6),
                 ...clarifications.map((d) => Text('• $d')),
               ],
@@ -433,10 +497,7 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen>
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           ),
           const SizedBox(height: 10),
           child,

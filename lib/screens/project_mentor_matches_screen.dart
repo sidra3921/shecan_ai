@@ -19,16 +19,18 @@ class ProjectMentorMatchesScreen extends StatefulWidget {
       _ProjectMentorMatchesScreenState();
 }
 
-class _ProjectMentorMatchesScreenState extends State<ProjectMentorMatchesScreen> {
+class _ProjectMentorMatchesScreenState
+    extends State<ProjectMentorMatchesScreen> {
   late Future<List<MentorGigRecommendation>> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = GetIt.I<RecommendationService>().getMentorGigRecommendationsForProject(
-      projectId: widget.projectId,
-      limit: 15,
-    );
+    _future = GetIt.I<RecommendationService>()
+        .getMentorGigRecommendationsForProject(
+          projectId: widget.projectId,
+          limit: 15,
+        );
   }
 
   @override
@@ -36,6 +38,8 @@ class _ProjectMentorMatchesScreenState extends State<ProjectMentorMatchesScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text('AI Mentor Matches'),
       ),
       body: Padding(
@@ -98,7 +102,9 @@ class _ProjectMentorMatchesScreenState extends State<ProjectMentorMatchesScreen>
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.success.withValues(alpha: 0.12),
+                                      color: AppColors.success.withValues(
+                                        alpha: 0.12,
+                                      ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -133,14 +139,18 @@ class _ProjectMentorMatchesScreenState extends State<ProjectMentorMatchesScreen>
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 6,
-                                  children: item.matchedSkills.take(5).map((skill) {
+                                  children: item.matchedSkills.take(5).map((
+                                    skill,
+                                  ) {
                                     return Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.info.withValues(alpha: 0.12),
+                                        color: AppColors.info.withValues(
+                                          alpha: 0.12,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(

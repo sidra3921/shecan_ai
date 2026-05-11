@@ -36,14 +36,14 @@ class MentorCoursesScreen extends StatelessWidget {
     try {
       await GetIt.instance<SupabaseDatabaseService>().deleteCourse(course.id);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Course deleted')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Course deleted')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete course: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete course: $e')));
     }
   }
 
@@ -54,6 +54,8 @@ class MentorCoursesScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text('My Courses'),
         actions: [
           IconButton(
@@ -85,7 +87,8 @@ class MentorCoursesScreen extends StatelessWidget {
       body: StreamBuilder<List<CourseModel>>(
         stream: db.streamMentorCourses(userId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -138,7 +141,9 @@ class MentorCoursesScreen extends StatelessWidget {
                             height: 140,
                             color: AppColors.surface,
                             alignment: Alignment.center,
-                            child: const Icon(Icons.image_not_supported_outlined),
+                            child: const Icon(
+                              Icons.image_not_supported_outlined,
+                            ),
                           ),
                         ),
                       ),
@@ -146,12 +151,18 @@ class MentorCoursesScreen extends StatelessWidget {
                     ],
                     Text(
                       course.title,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${course.category} • ${course.level} • ${course.duration}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -172,7 +183,9 @@ class MentorCoursesScreen extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           '${course.totalStudents} students',
-                          style: const TextStyle(color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -199,11 +212,17 @@ class MentorCoursesScreen extends StatelessWidget {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.edit, color: AppColors.primary),
+                          icon: const Icon(
+                            Icons.edit,
+                            color: AppColors.primary,
+                          ),
                         ),
                         IconButton(
                           onPressed: () => _deleteCourse(context, course),
-                          icon: const Icon(Icons.delete, color: AppColors.error),
+                          icon: const Icon(
+                            Icons.delete,
+                            color: AppColors.error,
+                          ),
                         ),
                       ],
                     ),

@@ -24,10 +24,10 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text("Profile"),
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -54,12 +54,12 @@ class ProfileScreen extends StatelessWidget {
 
             return Column(
               children: [
-                // 👤 PROFILE HEADER
+                //  PROFILE HEADER
                 _buildHeader(context, user),
 
                 const SizedBox(height: 20),
 
-                // 📊 STATS
+                //  STATS
                 Row(
                   children: [
                     _statCard('Projects', '${user.completedProjects}'),
@@ -70,7 +70,7 @@ class ProfileScreen extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // ⚙️ SETTINGS
+                //  SETTINGS
                 _settingTile(
                   context,
                   Icons.payment,
@@ -104,7 +104,7 @@ class ProfileScreen extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // 🚪 LOGOUT
+                //  LOGOUT
                 InkWell(
                   onTap: () async {
                     await SupabaseAuthService().signOut();
@@ -138,7 +138,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // 👤 HEADER
+  //  HEADER
   Widget _buildHeader(BuildContext context, UserModel user) {
     final hasPhoto = user.photoURL.trim().isNotEmpty;
 
@@ -172,7 +172,10 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 Text(
                   user.displayName,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -190,7 +193,10 @@ class ProfileScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),
               );
             },
-            child: const Text("Edit"),
+            child: const Text(
+              "Edit",
+              style: TextStyle(color: AppColors.background),
+            ),
           ),
         ],
       ),

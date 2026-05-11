@@ -25,7 +25,11 @@ class MentorProfileScreen extends StatelessWidget {
             children: [
               const Text(
                 "Settings",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
               ),
 
               const SizedBox(height: 20),
@@ -41,14 +45,19 @@ class MentorProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 margin: const EdgeInsets.only(top: 10),
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryDark,
+                  ),
                   onPressed: () async {
                     await SupabaseAuthService().signOut();
                     if (context.mounted) {
                       Navigator.of(context).popUntil((route) => route.isFirst);
                     }
                   },
-                  child: const Text("Logout"),
+                  child: const Text(
+                    "Logout",
+                    style: TextStyle(color: AppColors.background),
+                  ),
                 ),
               ),
             ],
@@ -75,13 +84,16 @@ class MentorProfileScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
-        title: const Text("Mentor Profile"),
-        backgroundColor: Colors.transparent,
+        title: const Text(
+          "Mentor Profile",
+          style: TextStyle(color: AppColors.background),
+        ),
+        backgroundColor: AppColors.primary,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: AppColors.background,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings, color: AppColors.background),
             onPressed: () => _openSettings(context),
           ),
         ],
@@ -228,7 +240,10 @@ class MentorProfileScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const EditProfileScreen()),
               );
             },
-            child: const Text('Edit'),
+            child: const Text(
+              'Edit',
+              style: TextStyle(color: AppColors.background),
+            ),
           ),
         ],
       ),
@@ -265,7 +280,7 @@ class MentorProfileScreen extends StatelessWidget {
     );
   }
 
-  // 🧠 CHIP
+  //  CHIP
   static Widget _chip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

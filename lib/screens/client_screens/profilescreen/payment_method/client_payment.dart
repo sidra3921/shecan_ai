@@ -12,16 +12,20 @@ class PaymentMethodsScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text("Payment Methods"),
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
       ),
 
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            _gateway(context, 'JazzCash', 'Redirect checkout (sandbox)'),
+            _gateway(context, 'EasyPaisa', 'Redirect checkout (sandbox)'),
+            _gateway(context, 'Card (Stripe)', 'Stripe Checkout (sandbox)'),
+            const SizedBox(height: 16),
             _card(context, "Visa **** 4242", "Default Card"),
 
             _card(context, "Mastercard **** 8888", "Secondary Card"),
@@ -87,7 +91,7 @@ class PaymentMethodsScreen extends StatelessWidget {
             ),
           ),
 
-          // ✏️ EDIT BUTTON
+          //  EDIT BUTTON
           InkWell(
             onTap: () {
               Navigator.push(
@@ -98,6 +102,32 @@ class PaymentMethodsScreen extends StatelessWidget {
               );
             },
             child: const Icon(Icons.edit, size: 20, color: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _gateway(BuildContext context, String title, String subtitle) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance_wallet, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(subtitle, style: const TextStyle(color: Colors.grey)),
+              ],
+            ),
           ),
         ],
       ),

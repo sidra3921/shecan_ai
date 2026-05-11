@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flutter build apk arm64 with Gemini key",
+      "type": "shell",
+      "command": "flutter",
+      "args": [
+        "build",
+        "apk",
+        "--release",
+        "--target-platform",
+        "android-arm64",
+        "--dart-define=GEMINI_API_KEY=${input:geminiApiKey}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter run chrome with Gemini key",
+      "type": "shell",
+      "command": "flutter",
+      "args": [
+        "run",
+        "-d",
+        "chrome",
+        "--dart-define=GEMINI_API_KEY=${input:geminiApiKey}"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "geminiApiKey",
+      "type": "promptString",
+      "description": "Gemini API key for this build or run",
+      "password": true
+    }
+  ]
+}

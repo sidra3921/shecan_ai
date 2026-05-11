@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../constants/app_colors.dart';
 import '../../../models/mentor_gig_model.dart';
 import '../../../models/project_model.dart';
+import '../../../screens/payments/payment_checkout_screen.dart';
 import '../../../services/chat_service.dart';
 import '../../../services/session_service.dart';
 import '../../../services/supabase_database_service.dart';
@@ -153,6 +154,28 @@ class _ClientGigDetailScreenState extends State<ClientGigDetailScreen> {
 
       final projectId = await db.createProject(project);
 
+      final paymentOk = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentCheckoutScreen(
+            title: project.title,
+            amount: packagePrice,
+            fromUserId: currentUserId,
+            toUserId: widget.gig.mentorId,
+            itemType: 'service',
+            projectId: projectId,
+          ),
+        ),
+      );
+
+      if (paymentOk != true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment pending. Complete payment to start the order.')),
+        );
+        return;
+      }
+
       final conversation = await chatService.getOrCreateDirectConversation(
         currentUserId: currentUserId,
         currentUserName: _currentUserDisplayName(),
@@ -211,6 +234,8 @@ class _ClientGigDetailScreenState extends State<ClientGigDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text('Gig Details'),
         actions: [
           if (_currentUserId != null)
@@ -339,14 +364,37 @@ class _ClientGigDetailScreenState extends State<ClientGigDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary, // button bg color
+                        foregroundColor: Colors.white, // text/icon color
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                      ),
+
                       onPressed: _isHiring ? null : () => _hirePackage(p),
+
                       child: _isHiring
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : Text('Hire This Package ($name)'),
+                          : Text(
+                              'Hire This Package ($name)',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],

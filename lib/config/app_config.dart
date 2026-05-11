@@ -1,13 +1,11 @@
-/// Application Configuration File
-///
-/// This file contains all API keys and configuration values for Tier 1 features.
-///
-/// ⚠️ SECURITY NOTE:
-/// - NEVER commit real API keys to version control
-/// - Use environment variables or secure storage in production
-/// - Use test keys for development and testing
-
-library app_config;
+// Application Configuration File
+//
+// This file contains all API keys and configuration values for Tier 1 features.
+//
+// SECURITY NOTE:
+// - NEVER commit real API keys to version control
+// - Use environment variables or secure storage in production
+// - Use test keys for development and testing
 
 import 'package:flutter/foundation.dart';
 
@@ -82,11 +80,6 @@ class AppConfig {
     defaultValue: '',
   );
 
-  /// Development-only fallback when dart-define is not provided.
-  /// Keep placeholder in git and set real key only in local environment.
-  static const String geminiApiKeyFromCode =
-      'AIzaSyDi2D4__HW8OzEtet6GMo5Wtou3tW0HRIk';
-
   /// Default model selected for free-tier friendly usage.
   static const String geminiModel = String.fromEnvironment(
     'GEMINI_MODEL',
@@ -94,15 +87,7 @@ class AppConfig {
   );
 
   static String get resolvedGeminiApiKey {
-    final fromDefine = geminiApiKey.trim();
-    if (fromDefine.isNotEmpty) return fromDefine;
-
-    final fromCode = geminiApiKeyFromCode.trim();
-    if (fromCode.isNotEmpty && !fromCode.contains('YOUR_')) {
-      return fromCode;
-    }
-
-    return '';
+    return geminiApiKey.trim();
   }
 
   /// ============ BACKEND CONFIGURATION ============
@@ -126,6 +111,23 @@ class AppConfig {
   static const double defaultVideoConsultationPricePerMinute =
       50.0; // Currency units
   static const String currencyCode = 'USD';
+
+    /// ============ PAYMENT GATEWAY (SANDBOX PLACEHOLDERS) ============
+    ///
+    /// Replace these with your real sandbox URLs from JazzCash/EasyPaisa.
+    /// Stripe Checkout should be created server-side and return a URL.
+    static const String jazzCashSandboxUrl =
+      'https://sandbox.jazzcash.com.pk/ApplicationAPI/API/Payment/DoTransaction';
+    static const String easyPaisaSandboxUrl =
+      'https://sandbox.easypaisa.com.pk/easypay/Index.jsf';
+
+    /// Stripe Checkout URL should be created by your backend.
+    static const String stripeCheckoutUrl =
+      'https://example.com/payments/stripe/checkout';
+
+    /// Redirect/return URLs used by hosted payment pages.
+    static const String paymentReturnUrl = 'https://example.com/payment-success';
+    static const String paymentCancelUrl = 'https://example.com/payment-cancel';
 
   /// ============ ASSESSMENT SETTINGS ============
   static const double defaultAssessmentPassingScore = 70.0; // Percentage

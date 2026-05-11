@@ -51,7 +51,7 @@ class AIService {
     final key = AppConfig.resolvedGeminiApiKey;
 
     if (key.isEmpty) {
-      return '$fallback\n\nSet Gemini key with either --dart-define=GEMINI_API_KEY=... or AppConfig.geminiApiKeyFromCode.';
+      return '$fallback\n\nSet GEMINI_API_KEY with --dart-define before building the app.';
     }
 
     try {

@@ -34,9 +34,9 @@ class MyServicesScreen extends StatelessWidget {
     try {
       await GetIt.instance<SupabaseDatabaseService>().deleteMentorGig(gig.id);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Service deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Service deleted')));
       }
     } catch (e) {
       if (context.mounted) {
@@ -53,7 +53,11 @@ class MyServicesScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text("My Services")),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        title: const Text("My Services"),
+      ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: () async {
@@ -168,7 +172,9 @@ class MyServicesScreen extends StatelessWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.10),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.10,
+                                  ),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
@@ -219,11 +225,17 @@ class MyServicesScreen extends StatelessWidget {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.edit, color: AppColors.primary),
+                          icon: const Icon(
+                            Icons.edit,
+                            color: AppColors.primary,
+                          ),
                         ),
                         IconButton(
                           onPressed: () => _deleteGig(context, gig),
-                          icon: const Icon(Icons.delete, color: AppColors.primary),
+                          icon: const Icon(
+                            Icons.delete,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ],
                     ),

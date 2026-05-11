@@ -33,10 +33,10 @@ class HomeScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.background,
             title: Text('Hello, $firstName'),
-            backgroundColor: Colors.transparent,
             elevation: 0,
-            foregroundColor: AppColors.textPrimary,
           ),
           drawer: _buildDrawer(context),
           body: StreamBuilder<List<MentorGigModel>>(

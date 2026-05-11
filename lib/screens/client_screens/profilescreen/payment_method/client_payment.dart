@@ -12,10 +12,10 @@ class PaymentMethodsScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text("Payment Methods"),
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
       ),
 
       body: Padding(
@@ -91,7 +91,7 @@ class PaymentMethodsScreen extends StatelessWidget {
             ),
           ),
 
-          // ✏️ EDIT BUTTON
+          //  EDIT BUTTON
           InkWell(
             onTap: () {
               Navigator.push(

@@ -17,7 +17,8 @@ class ClientCourseDetailScreen extends StatefulWidget {
   final String? currentUserId;
 
   @override
-  State<ClientCourseDetailScreen> createState() => _ClientCourseDetailScreenState();
+  State<ClientCourseDetailScreen> createState() =>
+      _ClientCourseDetailScreenState();
 }
 
 class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
@@ -27,7 +28,9 @@ class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
     final clientId = widget.currentUserId;
     if (clientId == null || clientId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login required to enroll in this course.')),
+        const SnackBar(
+          content: Text('Login required to enroll in this course.'),
+        ),
       );
       return;
     }
@@ -41,7 +44,9 @@ class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
     if (alreadyEnrolled) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are already enrolled in this course.')),
+        const SnackBar(
+          content: Text('You are already enrolled in this course.'),
+        ),
       );
       return;
     }
@@ -101,13 +106,15 @@ class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enrollment successful. Added to My Learning.')),
+        const SnackBar(
+          content: Text('Enrollment successful. Added to My Learning.'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not enroll: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not enroll: $e')));
     } finally {
       if (mounted) setState(() => _isEnrolling = false);
     }
@@ -119,7 +126,11 @@ class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Course Detail')),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        title: const Text('Course Detail'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -207,8 +218,22 @@ class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
               ),
               Expanded(
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.background,
+                    elevation: 3,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+
                   onPressed: _isEnrolling ? null : _enrollNow,
-                  child: Text(_isEnrolling ? 'Enrolling...' : 'Enroll Now'),
+
+                  child: Text(
+                    _isEnrolling ? 'Enrolling...' : 'Enroll Now',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
@@ -225,10 +250,7 @@ class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 12),
-      ),
+      child: Text(text, style: const TextStyle(fontSize: 12)),
     );
   }
 }

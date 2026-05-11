@@ -37,7 +37,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return gigs.where((gig) {
       final matchesCategory =
           category == 'all' || (gig.category?.toLowerCase() == category);
-      final matchesQuery = q.isEmpty ||
+      final matchesQuery =
+          q.isEmpty ||
           gig.title.toLowerCase().contains(q) ||
           gig.description.toLowerCase().contains(q) ||
           gig.skills.any((s) => s.toLowerCase().contains(q));
@@ -74,11 +75,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          "Explore",
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        title: const Text("Explore"),
         elevation: 0,
         centerTitle: true,
       ),
@@ -103,7 +102,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 _searchController.text,
                 _selectedCategory,
               );
-              final filteredCourses = _filterCourses(allCourses, _searchController.text);
+              final filteredCourses = _filterCourses(
+                allCourses,
+                _searchController.text,
+              );
 
               return Padding(
                 padding: const EdgeInsets.all(16),
@@ -168,7 +170,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 (c) => CategoryChip(
                                   title: c[0].toUpperCase() + c.substring(1),
                                   isSelected: c == _selectedCategory,
-                                  onTap: () => setState(() => _selectedCategory = c),
+                                  onTap: () =>
+                                      setState(() => _selectedCategory = c),
                                 ),
                               )
                               .toList(),
@@ -186,17 +189,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       const SizedBox(height: 10),
                       Expanded(
                         child: filteredServices.isEmpty
-                            ? const Center(child: Text('No matching services found'))
+                            ? const Center(
+                                child: Text('No matching services found'),
+                              )
                             : GridView.builder(
                                 itemCount: filteredServices.length,
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 12,
-                                  crossAxisSpacing: 12,
-                                  childAspectRatio: 0.68,
-                                ),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      mainAxisSpacing: 12,
+                                      crossAxisSpacing: 12,
+                                      mainAxisExtent: 300,
+                                    ),
                                 itemBuilder: (context, index) {
-                                  return MentorCard(gig: filteredServices[index]);
+                                  return MentorCard(
+                                    gig: filteredServices[index],
+                                  );
                                 },
                               ),
                       ),
@@ -212,7 +220,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       const SizedBox(height: 10),
                       Expanded(
                         child: filteredCourses.isEmpty
-                            ? const Center(child: Text('No matching courses found'))
+                            ? const Center(
+                                child: Text('No matching courses found'),
+                              )
                             : ListView.builder(
                                 itemCount: filteredCourses.length,
                                 itemBuilder: (context, index) {
@@ -302,16 +312,15 @@ class MentorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayPrice = gig.packages.isNotEmpty
-        ? (gig.packages.first['price']?.toString() ?? gig.hourlyRate.toStringAsFixed(0))
+        ? (gig.packages.first['price']?.toString() ??
+              gig.hourlyRate.toStringAsFixed(0))
         : gig.hourlyRate.toStringAsFixed(0);
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => ClientGigDetailScreen(gig: gig),
-          ),
+          MaterialPageRoute(builder: (_) => ClientGigDetailScreen(gig: gig)),
         );
       },
       child: Container(
@@ -357,7 +366,10 @@ class MentorCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 gig.category ?? 'General',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const Spacer(),
               Row(
@@ -397,11 +409,7 @@ class MentorCard extends StatelessWidget {
 }
 
 class CourseCard extends StatelessWidget {
-  const CourseCard({
-    super.key,
-    required this.course,
-    this.currentUserId,
-  });
+  const CourseCard({super.key, required this.course, this.currentUserId});
 
   final CourseModel course;
   final String? currentUserId;

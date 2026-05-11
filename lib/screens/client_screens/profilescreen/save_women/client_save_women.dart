@@ -59,10 +59,10 @@ class _SavedMentorsScreenState extends State<SavedMentorsScreen> {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text("Saved Mentors"),
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
       ),
       body: StreamBuilder<Set<String>>(
         stream: GetIt.instance<SupabaseDatabaseService>().streamSavedGigIds(

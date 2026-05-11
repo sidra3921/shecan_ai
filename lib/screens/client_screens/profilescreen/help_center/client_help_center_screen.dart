@@ -10,8 +10,9 @@ class HelpCenterScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title: const Text("Help Center"),
-        backgroundColor: Colors.transparent,
         elevation: 0,
       ),
 

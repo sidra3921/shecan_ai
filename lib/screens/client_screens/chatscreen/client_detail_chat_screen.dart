@@ -577,6 +577,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       backgroundColor: AppColors.background,
 
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         title:
             widget.isAI ||
                 _isGroupChat ||
@@ -618,14 +620,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               tooltip: 'Community settings',
             ),
         ],
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
       ),
 
       body: Column(
         children: [
-          // 💬 Messages
+          //  Messages
           Expanded(
             child: widget.isAI
                 ? ListView.builder(
@@ -784,7 +784,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
           ),
 
-          // ✍️ Input Box
+          //  Input Box
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.white,

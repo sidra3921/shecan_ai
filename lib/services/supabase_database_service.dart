@@ -837,6 +837,8 @@ class SupabaseDatabaseService {
       'completed_at': DateTime.now().toIso8601String(),
     });
 
+    await releaseEscrowForProject(projectId);
+
     final mentorId = project.mentorId;
     if (mentorId != null && mentorId.isNotEmpty) {
       await createNotification(
@@ -1332,6 +1334,48 @@ class SupabaseDatabaseService {
           .map((item) => PaymentModel.fromMap(item, item['id']))
           .toList();
     });
+  }
+
+  Future<String?> _findPaymentIdForProject(String projectId) async {
+    try {
+      final data = await _supabase
+          .from('payments')
+          .select('id')
+          .eq('project_id', projectId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      return data?['id']?.toString();
+    } on PostgrestException catch (e) {
+      final missingColumn = _extractMissingColumn(e.message);
+      if (missingColumn != 'project_id') rethrow;
+    }
+
+    try {
+      final data = await _supabase
+          .from('payments')
+          .select('id')
+          .eq('projectId', projectId)
+          .order('createdAt', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      return data?['id']?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> releaseEscrowForProject(String projectId) async {
+    try {
+      final paymentId = await _findPaymentIdForProject(projectId);
+      if (paymentId == null) return;
+      await _supabase.rpc(
+        'release_escrow',
+        params: {'p_payment_id': paymentId},
+      );
+    } catch (e) {
+      debugPrint('Escrow release skipped: $e');
+    }
   }
 
   // ==================== DISPUTE OPERATIONS ====================

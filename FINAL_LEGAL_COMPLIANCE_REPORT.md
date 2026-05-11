@@ -78,22 +78,27 @@ It is **technically safer than many early-stage apps** because RLS and role isol
 - Community Guidelines / Safety Policy
 - Cookie/Tracking disclosure (if analytics/SDK tracking is enabled)
 
-2. Add consent capture and evidence
+2. Publish payment policy documents
+- Commission disclosure (services 10%, courses 15%)
+- Refund policy
+- Payout rules and timing
+
+3. Add consent capture and evidence
 - Mandatory checkbox acceptance during signup.
 - Store `policy_version`, `accepted_at`, `accepted_ip` (where lawful), and user ID.
 - Require re-consent on policy updates.
 
-3. Implement user rights operations
+4. Implement user rights operations
 - In-app account deletion request.
 - Data export request (machine-readable format).
 - Admin workflow and SLA tracking for DSAR requests.
 
-4. Lock down storage confidentiality
+5. Lock down storage confidentiality
 - Use private buckets for user-generated and sensitive files.
 - Replace public URLs with signed URLs where needed.
 - Add strict storage policies by owner/role.
 
-5. Remove secret-style values from client code
+6. Remove secret-style values from client code
 - Keep only public keys in client.
 - Move secret keys and privileged operations to server/edge functions.
 

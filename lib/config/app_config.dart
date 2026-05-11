@@ -112,6 +112,23 @@ class AppConfig {
       50.0; // Currency units
   static const String currencyCode = 'USD';
 
+    /// ============ PAYMENT GATEWAY (SANDBOX PLACEHOLDERS) ============
+    ///
+    /// Replace these with your real sandbox URLs from JazzCash/EasyPaisa.
+    /// Stripe Checkout should be created server-side and return a URL.
+    static const String jazzCashSandboxUrl =
+      'https://sandbox.jazzcash.com.pk/ApplicationAPI/API/Payment/DoTransaction';
+    static const String easyPaisaSandboxUrl =
+      'https://sandbox.easypaisa.com.pk/easypay/Index.jsf';
+
+    /// Stripe Checkout URL should be created by your backend.
+    static const String stripeCheckoutUrl =
+      'https://example.com/payments/stripe/checkout';
+
+    /// Redirect/return URLs used by hosted payment pages.
+    static const String paymentReturnUrl = 'https://example.com/payment-success';
+    static const String paymentCancelUrl = 'https://example.com/payment-cancel';
+
   /// ============ ASSESSMENT SETTINGS ============
   static const double defaultAssessmentPassingScore = 70.0; // Percentage
 

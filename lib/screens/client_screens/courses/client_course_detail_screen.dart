@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../models/course_model.dart';
+import '../../../screens/payments/payment_checkout_screen.dart';
 import '../../../services/supabase_database_service.dart';
 
 class ClientCourseDetailScreen extends StatefulWidget {
@@ -70,6 +71,28 @@ class _ClientCourseDetailScreenState extends State<ClientCourseDetailScreen> {
     setState(() => _isEnrolling = true);
 
     try {
+      final paymentOk = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentCheckoutScreen(
+            title: widget.course.title,
+            amount: widget.course.price,
+            fromUserId: clientId,
+            toUserId: widget.course.mentorId,
+            itemType: 'course',
+            courseId: widget.course.id,
+          ),
+        ),
+      );
+
+      if (paymentOk != true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment pending. Enrollment on hold.')),
+        );
+        return;
+      }
+
       await db.enrollInCourse(
         courseId: widget.course.id,
         clientId: clientId,

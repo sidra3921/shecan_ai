@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../constants/app_colors.dart';
 import '../../../models/mentor_gig_model.dart';
 import '../../../models/project_model.dart';
+import '../../../screens/payments/payment_checkout_screen.dart';
 import '../../../services/chat_service.dart';
 import '../../../services/session_service.dart';
 import '../../../services/supabase_database_service.dart';
@@ -152,6 +153,28 @@ class _ClientGigDetailScreenState extends State<ClientGigDetailScreen> {
       );
 
       final projectId = await db.createProject(project);
+
+      final paymentOk = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentCheckoutScreen(
+            title: project.title,
+            amount: packagePrice,
+            fromUserId: currentUserId,
+            toUserId: widget.gig.mentorId,
+            itemType: 'service',
+            projectId: projectId,
+          ),
+        ),
+      );
+
+      if (paymentOk != true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment pending. Complete payment to start the order.')),
+        );
+        return;
+      }
 
       final conversation = await chatService.getOrCreateDirectConversation(
         currentUserId: currentUserId,

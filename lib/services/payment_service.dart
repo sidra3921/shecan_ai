@@ -12,6 +12,32 @@ class PaymentService {
     return _db.createPayment(payment);
   }
 
+  Future<String> createEscrowPayment({
+    String? projectId,
+    String? courseId,
+    required String fromUserId,
+    required String toUserId,
+    required double amount,
+    required String method,
+    required String itemType,
+    String? escrowReference,
+  }) {
+    final payment = PaymentModel(
+      id: '',
+      projectId: projectId,
+      fromUserId: fromUserId,
+      toUserId: toUserId,
+      amount: amount,
+      method: method,
+      status: 'pending',
+      escrowStatus: 'held',
+      escrowReference: escrowReference,
+      itemType: itemType,
+      courseId: courseId,
+    );
+    return _db.createPayment(payment);
+  }
+
   Stream<List<PaymentModel>> streamUserPayments(String userId) {
     return _db.streamUserPayments(userId);
   }

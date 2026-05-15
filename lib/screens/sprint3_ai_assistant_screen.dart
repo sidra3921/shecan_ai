@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import '../constants/app_colors.dart';
 import '../models/project_model.dart';
 import '../services/ai_service.dart';
+import '../services/content_moderation_service.dart';
 import '../services/supabase_database_service.dart';
 
 class Sprint3AiAssistantScreen extends StatefulWidget {
@@ -102,7 +103,7 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen> {
       if (!mounted) return;
       setState(() => _briefDraft = draft);
     } catch (e) {
-      _toast('Could not generate brief: $e');
+      _toast(_moderationAwareMessage(e, 'Could not generate brief'));
     } finally {
       if (mounted) setState(() => _isGeneratingBrief = false);
     }
@@ -140,7 +141,7 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen> {
       final id = await _db.createProject(project);
       _toast('Draft project created successfully (ID: $id)');
     } catch (e) {
-      _toast('Could not create project draft: $e');
+      _toast(_moderationAwareMessage(e, 'Could not create project draft'));
     } finally {
       if (mounted) setState(() => _isCreatingDraftProject = false);
     }
@@ -178,7 +179,7 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen> {
       if (!mounted) return;
       setState(() => _proposalDraft = draft);
     } catch (e) {
-      _toast('Could not generate proposal: $e');
+      _toast(_moderationAwareMessage(e, 'Could not generate proposal'));
     } finally {
       if (mounted) setState(() => _isGeneratingProposal = false);
     }
@@ -195,6 +196,15 @@ class _Sprint3AiAssistantScreenState extends State<Sprint3AiAssistantScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _moderationAwareMessage(Object error, String prefix) {
+    final text = error.toString();
+    if (text == ContentModerationService.violationMessage ||
+        text.contains(ContentModerationService.violationMessage)) {
+      return ContentModerationService.violationMessage;
+    }
+    return '$prefix: $error';
   }
 
   @override

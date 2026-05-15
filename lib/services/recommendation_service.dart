@@ -2,6 +2,7 @@ import '../models/project_model.dart';
 import '../models/mentor_gig_model.dart';
 import '../models/user_model.dart';
 import 'supabase_database_service.dart';
+import 'content_moderation_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProjectApplication {
@@ -83,7 +84,8 @@ class MentorGigDraft {
 }
 
 class RecommendationService {
-  static final RecommendationService _instance = RecommendationService._internal();
+  static final RecommendationService _instance =
+      RecommendationService._internal();
   factory RecommendationService() => _instance;
   RecommendationService._internal();
 
@@ -91,10 +93,19 @@ class RecommendationService {
 
   Future<String> createMentorGig(MentorGigModel gig) async {
     try {
+      ContentModerationService().validateGigFields(
+        title: gig.title,
+        description: gig.description,
+        skills: gig.skills,
+        category: gig.category,
+        experienceLevel: gig.experienceLevel,
+        packages: gig.packages,
+      );
       final response = await _db.insert('mentor_gigs', gig.toMap());
       return response['id'].toString();
     } on PostgrestException catch (e) {
-      final missingTable = (e.code == 'PGRST205') ||
+      final missingTable =
+          (e.code == 'PGRST205') ||
           e.message.toLowerCase().contains('could not find the table') ||
           e.message.toLowerCase().contains('mentor_gigs');
 
@@ -111,8 +122,11 @@ class RecommendationService {
     required String niche,
     required List<String> selectedSkills,
   }) {
+    ContentModerationService().validateFields([niche, ...selectedSkills]);
     final cleanNiche = niche.trim();
-    final titleNiche = cleanNiche.isEmpty ? 'Professional Services' : cleanNiche;
+    final titleNiche = cleanNiche.isEmpty
+        ? 'Professional Services'
+        : cleanNiche;
     final skills = selectedSkills.isEmpty
         ? _inferSkillsFromNiche(cleanNiche)
         : selectedSkills;
@@ -218,10 +232,7 @@ class RecommendationService {
             missingSkills: missing,
             daysUntilDeadline: days,
             locationDisplay: _locationText(project),
-            distance: user.distanceTo(
-              project.latitude,
-              project.longitude,
-            ),
+            distance: user.distanceTo(project.latitude, project.longitude),
           ),
         );
       }
@@ -315,7 +326,9 @@ class RecommendationService {
     });
   }
 
-  Future<List<ProjectApplication>> getProjectApplications(String projectId) async {
+  Future<List<ProjectApplication>> getProjectApplications(
+    String projectId,
+  ) async {
     try {
       final rows = await _db.query(
         'project_applications',
@@ -402,18 +415,25 @@ class RecommendationService {
 
   List<String> _matchedSkills(UserModel user, ProjectModel project) {
     final userSkills = user.skills.map((s) => s.toLowerCase()).toSet();
-    return project.skills.where((s) => userSkills.contains(s.toLowerCase())).toList();
+    return project.skills
+        .where((s) => userSkills.contains(s.toLowerCase()))
+        .toList();
   }
 
   List<String> _missingSkills(UserModel user, ProjectModel project) {
     final userSkills = user.skills.map((s) => s.toLowerCase()).toSet();
-    return project.skills.where((s) => !userSkills.contains(s.toLowerCase())).toList();
+    return project.skills
+        .where((s) => !userSkills.contains(s.toLowerCase()))
+        .toList();
   }
 
   String _locationText(ProjectModel project) {
     final city = project.city?.trim();
     final country = project.country?.trim();
-    if (city != null && city.isNotEmpty && country != null && country.isNotEmpty) {
+    if (city != null &&
+        city.isNotEmpty &&
+        country != null &&
+        country.isNotEmpty) {
       return '$city, $country';
     }
     if (city != null && city.isNotEmpty) return city;
@@ -425,8 +445,12 @@ class RecommendationService {
     final lower = niche.toLowerCase();
     if (lower.contains('design')) return ['Logo Design', 'UI/UX', 'Branding'];
     if (lower.contains('develop')) return ['Flutter', 'Web Development', 'API'];
-    if (lower.contains('market')) return ['Digital Marketing', 'SEO', 'Social Media'];
-    if (lower.contains('write')) return ['Content Writing', 'Copywriting', 'Editing'];
+    if (lower.contains('market')) {
+      return ['Digital Marketing', 'SEO', 'Social Media'];
+    }
+    if (lower.contains('write')) {
+      return ['Content Writing', 'Copywriting', 'Editing'];
+    }
     return ['Communication', 'Project Planning', 'Client Support'];
   }
 
@@ -435,12 +459,18 @@ class RecommendationService {
     return value[0].toUpperCase() + value.substring(1);
   }
 
-  List<String> _matchSkills(List<String> projectSkills, List<String> gigSkills) {
+  List<String> _matchSkills(
+    List<String> projectSkills,
+    List<String> gigSkills,
+  ) {
     final project = projectSkills.map((e) => e.toLowerCase()).toSet();
     return gigSkills.where((s) => project.contains(s.toLowerCase())).toList();
   }
 
-  List<String> _missingProjectSkills(List<String> projectSkills, List<String> gigSkills) {
+  List<String> _missingProjectSkills(
+    List<String> projectSkills,
+    List<String> gigSkills,
+  ) {
     final gig = gigSkills.map((e) => e.toLowerCase()).toSet();
     return projectSkills.where((s) => !gig.contains(s.toLowerCase())).toList();
   }

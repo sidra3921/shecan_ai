@@ -48,6 +48,9 @@ dependencies:
   shared_preferences: ^2.2.2
   http: ^1.2.2
   url_launcher: ^6.3.0
+  speech_to_text: ^6.6.0
+  flutter_tts: ^3.8.5
+  flutter_markdown: ^0.7.2
   
   # Location & GIS
   geolocator: ^14.0.2

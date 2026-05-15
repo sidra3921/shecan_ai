@@ -1,10 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
+import 'content_moderation_service.dart';
 import 'supabase_database_service.dart';
 
 class SupabaseAuthService {
-  static final SupabaseAuthService _instance =
-      SupabaseAuthService._internal();
+  static final SupabaseAuthService _instance = SupabaseAuthService._internal();
   factory SupabaseAuthService() => _instance;
   SupabaseAuthService._internal();
 
@@ -37,8 +37,7 @@ class SupabaseAuthService {
   bool get isAuthenticated => _supabase.auth.currentUser != null;
 
   // Auth state stream
-  Stream<AuthState> get authStateChanges =>
-      _supabase.auth.onAuthStateChange;
+  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
 
   /// Resolve current signed-in user's role from auth metadata or profile.
   Future<String?> getCurrentUserType() async {
@@ -70,6 +69,7 @@ class SupabaseAuthService {
     try {
       final normalizedEmail = email.trim().toLowerCase();
       final selectedType = _normalizeUserType(userType);
+      ContentModerationService().validateText(displayName);
 
       final existingUser = await _dbService.getUserByEmail(normalizedEmail);
       if (existingUser != null) {
@@ -82,10 +82,7 @@ class SupabaseAuthService {
       final response = await _supabase.auth.signUp(
         email: normalizedEmail,
         password: password,
-        data: {
-          'display_name': displayName,
-          'user_type': selectedType,
-        },
+        data: {'display_name': displayName, 'user_type': selectedType},
       );
 
       final user = response.user;
@@ -178,9 +175,7 @@ class SupabaseAuthService {
         password: currentPassword,
       );
 
-      await _supabase.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
     } on AuthException catch (e) {
       throw _handleAuthException(e);
     }
@@ -197,6 +192,7 @@ class SupabaseAuthService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No user logged in');
+      ContentModerationService().validateText(displayName);
 
       final updates = <String, dynamic>{
         'display_name': displayName,
@@ -204,9 +200,7 @@ class SupabaseAuthService {
         if (photoURL != null) 'avatar_url': photoURL,
       };
 
-      await _supabase.auth.updateUser(
-        UserAttributes(data: updates),
-      );
+      await _supabase.auth.updateUser(UserAttributes(data: updates));
 
       // Also update user profile in database
       if (user.userMetadata?['full_profile'] == true) {

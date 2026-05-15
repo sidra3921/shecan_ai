@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/chat_model.dart';
 import '../models/user_model.dart';
+import 'content_moderation_service.dart';
 
 class PresenceStatus {
   final bool isOnline;
@@ -17,7 +18,9 @@ class ChatService {
 
   final _supabase = Supabase.instance.client;
 
-  Future<Map<String, dynamic>?> _fetchConversationRow(String conversationId) async {
+  Future<Map<String, dynamic>?> _fetchConversationRow(
+    String conversationId,
+  ) async {
     return await _supabase
         .from('conversations')
         .select()
@@ -26,8 +29,9 @@ class ChatService {
   }
 
   String? _extractMissingColumn(String message) {
-    final match = RegExp("Could not find the '([^']+)' column")
-        .firstMatch(message);
+    final match = RegExp(
+      "Could not find the '([^']+)' column",
+    ).firstMatch(message);
     return match?.group(1);
   }
 
@@ -35,6 +39,7 @@ class ChatService {
     String messageId,
     Map<String, dynamic> payload,
   ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 10; i++) {
@@ -50,7 +55,9 @@ class ChatService {
       }
     }
 
-    throw Exception('Failed to update message after removing unsupported columns');
+    throw Exception(
+      'Failed to update message after removing unsupported columns',
+    );
   }
 
   Future<void> _upsertWithPrunedColumns(
@@ -58,14 +65,12 @@ class ChatService {
     Map<String, dynamic> payload,
     String? onConflict,
   ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 10; i++) {
       try {
-        await _supabase.from(table).upsert(
-              working,
-              onConflict: onConflict,
-            );
+        await _supabase.from(table).upsert(working, onConflict: onConflict);
         return;
       } on PostgrestException catch (e) {
         final missingColumn = _extractMissingColumn(e.message);
@@ -76,10 +81,15 @@ class ChatService {
       }
     }
 
-    throw Exception('Failed to upsert into $table after removing unsupported columns');
+    throw Exception(
+      'Failed to upsert into $table after removing unsupported columns',
+    );
   }
 
-  Future<void> _insertMessageWithPrunedColumns(Map<String, dynamic> payload) async {
+  Future<void> _insertMessageWithPrunedColumns(
+    Map<String, dynamic> payload,
+  ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 12; i++) {
@@ -95,18 +105,24 @@ class ChatService {
       }
     }
 
-    throw Exception('Failed to send message after removing unsupported columns');
+    throw Exception(
+      'Failed to send message after removing unsupported columns',
+    );
   }
 
   Future<void> _updateConversationWithPrunedColumns(
     String conversationId,
     Map<String, dynamic> payload,
   ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 8; i++) {
       try {
-        await _supabase.from('conversations').update(working).eq('id', conversationId);
+        await _supabase
+            .from('conversations')
+            .update(working)
+            .eq('id', conversationId);
         return;
       } on PostgrestException catch (e) {
         final missingColumn = _extractMissingColumn(e.message);
@@ -117,7 +133,9 @@ class ChatService {
       }
     }
 
-    throw Exception('Failed to update conversation after removing unsupported columns');
+    throw Exception(
+      'Failed to update conversation after removing unsupported columns',
+    );
   }
 
   Stream<List<Conversation>> getConversationsStream(String userId) {
@@ -131,8 +149,9 @@ class ChatService {
             .stream(primaryKey: ['id'])
             .map((rows) => _mapConversations(rows, userId));
       } catch (_) {
-        yield* Stream.periodic(const Duration(seconds: 12))
-            .asyncMap((_) => _fetchConversationsSnapshot(userId));
+        yield* Stream.periodic(
+          const Duration(seconds: 12),
+        ).asyncMap((_) => _fetchConversationsSnapshot(userId));
       }
     })();
   }
@@ -152,18 +171,26 @@ class ChatService {
               return mapped;
             });
       } catch (_) {
-        yield* Stream.periodic(const Duration(seconds: 8))
-            .asyncMap((_) => _fetchMessagesSnapshot(conversationId));
+        yield* Stream.periodic(
+          const Duration(seconds: 8),
+        ).asyncMap((_) => _fetchMessagesSnapshot(conversationId));
       }
     })();
   }
 
-  List<Conversation> _mapConversations(List<Map<String, dynamic>> rows, String userId) {
+  List<Conversation> _mapConversations(
+    List<Map<String, dynamic>> rows,
+    String userId,
+  ) {
     final mapped = rows
-        .where((row) => (row['participant_ids'] as List?)?.contains(userId) ?? false)
+        .where(
+          (row) => (row['participant_ids'] as List?)?.contains(userId) ?? false,
+        )
         .map((row) => _mapConversation(row, userId))
         .toList();
-    mapped.sort((a, b) => b.lastMessageTimestamp.compareTo(a.lastMessageTimestamp));
+    mapped.sort(
+      (a, b) => b.lastMessageTimestamp.compareTo(a.lastMessageTimestamp),
+    );
     return mapped;
   }
 
@@ -177,7 +204,9 @@ class ChatService {
     }
   }
 
-  Future<List<ChatMessage>> _fetchMessagesSnapshot(String conversationId) async {
+  Future<List<ChatMessage>> _fetchMessagesSnapshot(
+    String conversationId,
+  ) async {
     try {
       final rows = await _supabase
           .from('messages')
@@ -202,6 +231,7 @@ class ChatService {
     required String senderAvatar,
     required String content,
   }) async {
+    ContentModerationService().validateText(content);
     final now = DateTime.now().toIso8601String();
 
     final conversation = await _supabase
@@ -223,7 +253,8 @@ class ChatService {
     await _insertMessageWithPrunedColumns({
       'conversation_id': conversationId,
       'sender_id': senderId,
-      if (isDirectConversation && receiverId.isNotEmpty) 'receiver_id': receiverId,
+      if (isDirectConversation && receiverId.isNotEmpty)
+        'receiver_id': receiverId,
       'sender_name': senderName,
       'sender_avatar': senderAvatar,
       'content': content,
@@ -262,14 +293,11 @@ class ChatService {
       if (readBy.contains(currentUserId)) continue;
 
       readBy.add(currentUserId);
-      await _updateMessageWithPrunedColumns(
-        row['id'].toString(),
-        {
-          'read_by': readBy,
-          'is_read': true,
-          'seen_at': now,
-        },
-      );
+      await _updateMessageWithPrunedColumns(row['id'].toString(), {
+        'read_by': readBy,
+        'is_read': true,
+        'seen_at': now,
+      });
     }
   }
 
@@ -278,16 +306,12 @@ class ChatService {
     required String userId,
     required bool isTyping,
   }) async {
-    await _upsertWithPrunedColumns(
-      'typing_indicators',
-      {
-        'conversation_id': conversationId,
-        'user_id': userId,
-        'is_typing': isTyping,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      'conversation_id,user_id',
-    );
+    await _upsertWithPrunedColumns('typing_indicators', {
+      'conversation_id': conversationId,
+      'user_id': userId,
+      'is_typing': isTyping,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, 'conversation_id,user_id');
   }
 
   Stream<bool> streamTypingStatus({
@@ -303,16 +327,16 @@ class ChatService {
             .eq('conversation_id', conversationId)
             .map((rows) {
               final match = rows.cast<Map<String, dynamic>>().firstWhere(
-                    (row) => row['user_id']?.toString() == otherUserId,
-                    orElse: () => const <String, dynamic>{},
-                  );
+                (row) => row['user_id']?.toString() == otherUserId,
+                orElse: () => const <String, dynamic>{},
+              );
               if (match.isEmpty) return false;
               return match['is_typing'] == true;
             });
       } catch (_) {
-        yield* Stream.periodic(const Duration(seconds: 3)).asyncMap(
-          (_) => _fetchTypingState(conversationId, otherUserId),
-        );
+        yield* Stream.periodic(
+          const Duration(seconds: 3),
+        ).asyncMap((_) => _fetchTypingState(conversationId, otherUserId));
       }
     })();
   }
@@ -323,7 +347,11 @@ class ChatService {
     required Map<String, String> participantNames,
   }) {
     return (() async* {
-      yield await _fetchTypingUsers(conversationId, currentUserId, participantNames);
+      yield await _fetchTypingUsers(
+        conversationId,
+        currentUserId,
+        participantNames,
+      );
       try {
         yield* _supabase
             .from('typing_indicators')
@@ -335,10 +363,14 @@ class ChatService {
                   .where((row) {
                     final isTyping = row['is_typing'] == true;
                     final userId = row['user_id']?.toString() ?? '';
-                    if (!isTyping || userId.isEmpty || userId == currentUserId) {
+                    if (!isTyping ||
+                        userId.isEmpty ||
+                        userId == currentUserId) {
                       return false;
                     }
-                    final updatedAt = DateTime.tryParse(row['updated_at']?.toString() ?? '');
+                    final updatedAt = DateTime.tryParse(
+                      row['updated_at']?.toString() ?? '',
+                    );
                     if (updatedAt == null) return false;
                     return DateTime.now().difference(updatedAt).inSeconds <= 8;
                   })
@@ -353,7 +385,11 @@ class ChatService {
             });
       } catch (_) {
         yield* Stream.periodic(const Duration(seconds: 3)).asyncMap(
-          (_) => _fetchTypingUsers(conversationId, currentUserId, participantNames),
+          (_) => _fetchTypingUsers(
+            conversationId,
+            currentUserId,
+            participantNames,
+          ),
         );
       }
     })();
@@ -378,7 +414,9 @@ class ChatService {
             if (!isTyping || userId.isEmpty || userId == currentUserId) {
               return false;
             }
-            final updatedAt = DateTime.tryParse(row['updated_at']?.toString() ?? '');
+            final updatedAt = DateTime.tryParse(
+              row['updated_at']?.toString() ?? '',
+            );
             if (updatedAt == null) return false;
             return DateTime.now().difference(updatedAt).inSeconds <= 8;
           })
@@ -393,7 +431,10 @@ class ChatService {
     }
   }
 
-  Future<bool> _fetchTypingState(String conversationId, String otherUserId) async {
+  Future<bool> _fetchTypingState(
+    String conversationId,
+    String otherUserId,
+  ) async {
     try {
       final row = await _supabase
           .from('typing_indicators')
@@ -417,15 +458,11 @@ class ChatService {
     required String userId,
     required bool isOnline,
   }) async {
-    await _upsertWithPrunedColumns(
-      'user_presence',
-      {
-        'user_id': userId,
-        'is_online': isOnline,
-        'last_seen_at': DateTime.now().toIso8601String(),
-      },
-      'user_id',
-    );
+    await _upsertWithPrunedColumns('user_presence', {
+      'user_id': userId,
+      'is_online': isOnline,
+      'last_seen_at': DateTime.now().toIso8601String(),
+    }, 'user_id');
   }
 
   Stream<PresenceStatus> streamPresence(String userId) {
@@ -441,13 +478,15 @@ class ChatService {
               final row = rows.first;
               return PresenceStatus(
                 isOnline: row['is_online'] == true,
-                lastSeenAt: DateTime.tryParse(row['last_seen_at']?.toString() ?? ''),
+                lastSeenAt: DateTime.tryParse(
+                  row['last_seen_at']?.toString() ?? '',
+                ),
               );
             });
       } catch (_) {
-        yield* Stream.periodic(const Duration(seconds: 10)).asyncMap(
-          (_) => _fetchPresence(userId),
-        );
+        yield* Stream.periodic(
+          const Duration(seconds: 10),
+        ).asyncMap((_) => _fetchPresence(userId));
       }
     })();
   }
@@ -480,7 +519,9 @@ class ChatService {
 
     for (final row in rows) {
       final ids = List<String>.from(row['participant_ids'] ?? const []);
-      if (ids.length == 2 && ids.contains(currentUserId) && ids.contains(otherUser.id)) {
+      if (ids.length == 2 &&
+          ids.contains(currentUserId) &&
+          ids.contains(otherUser.id)) {
         return _mapConversation(row, currentUserId);
       }
     }
@@ -519,6 +560,7 @@ class ChatService {
     required String communityName,
     required List<UserModel> members,
   }) async {
+    ContentModerationService().validateText(communityName);
     final uniqueIds = <String>{creatorId, ...members.map((m) => m.id)};
     final ids = uniqueIds.toList();
     final now = DateTime.now().toIso8601String();
@@ -549,6 +591,7 @@ class ChatService {
       'created_at': now,
       'updated_at': now,
     };
+    ContentModerationService().validatePayload(payload);
 
     final inserted = await _supabase
         .from('conversations')
@@ -567,7 +610,9 @@ class ChatService {
     final row = await _fetchConversationRow(conversationId);
     if (row == null) return null;
 
-    final names = Map<String, String>.from(row['participant_names'] ?? const <String, String>{});
+    final names = Map<String, String>.from(
+      row['participant_names'] ?? const <String, String>{},
+    );
     final currentAdmin = names[Conversation.groupAdminMetaKey] ?? '';
     if (currentAdmin.isEmpty || currentAdmin != adminUserId) {
       throw Exception('Only the community admin can rename this group.');
@@ -575,6 +620,7 @@ class ChatService {
 
     final trimmed = newName.trim();
     if (trimmed.isEmpty) throw Exception('Community name cannot be empty.');
+    ContentModerationService().validateText(trimmed);
 
     names[Conversation.groupNameMetaKey] = trimmed;
 
@@ -596,8 +642,12 @@ class ChatService {
     final row = await _fetchConversationRow(conversationId);
     if (row == null) return null;
 
-    final names = Map<String, String>.from(row['participant_names'] ?? const <String, String>{});
-    final avatars = Map<String, String>.from(row['participant_avatars'] ?? const <String, String>{});
+    final names = Map<String, String>.from(
+      row['participant_names'] ?? const <String, String>{},
+    );
+    final avatars = Map<String, String>.from(
+      row['participant_avatars'] ?? const <String, String>{},
+    );
     final currentAdmin = names[Conversation.groupAdminMetaKey] ?? '';
     if (currentAdmin.isEmpty || currentAdmin != adminUserId) {
       throw Exception('Only the community admin can update group avatar.');
@@ -620,14 +670,20 @@ class ChatService {
     required String adminUserId,
     required List<UserModel> newMembers,
   }) async {
-    if (newMembers.isEmpty) return await getConversationById(conversationId, adminUserId);
+    if (newMembers.isEmpty) {
+      return await getConversationById(conversationId, adminUserId);
+    }
 
     final row = await _fetchConversationRow(conversationId);
     if (row == null) return null;
 
     final ids = List<String>.from(row['participant_ids'] ?? const []);
-    final names = Map<String, String>.from(row['participant_names'] ?? const <String, String>{});
-    final avatars = Map<String, String>.from(row['participant_avatars'] ?? const <String, String>{});
+    final names = Map<String, String>.from(
+      row['participant_names'] ?? const <String, String>{},
+    );
+    final avatars = Map<String, String>.from(
+      row['participant_avatars'] ?? const <String, String>{},
+    );
     final currentAdmin = names[Conversation.groupAdminMetaKey] ?? '';
     if (currentAdmin.isEmpty || currentAdmin != adminUserId) {
       throw Exception('Only the community admin can add members.');
@@ -661,8 +717,12 @@ class ChatService {
     if (row == null) return null;
 
     final ids = List<String>.from(row['participant_ids'] ?? const []);
-    final names = Map<String, String>.from(row['participant_names'] ?? const <String, String>{});
-    final avatars = Map<String, String>.from(row['participant_avatars'] ?? const <String, String>{});
+    final names = Map<String, String>.from(
+      row['participant_names'] ?? const <String, String>{},
+    );
+    final avatars = Map<String, String>.from(
+      row['participant_avatars'] ?? const <String, String>{},
+    );
     final currentAdmin = names[Conversation.groupAdminMetaKey] ?? '';
     if (currentAdmin.isEmpty || currentAdmin != adminUserId) {
       throw Exception('Only the community admin can remove members.');
@@ -697,7 +757,10 @@ class ChatService {
     return _mapConversation(updated, adminUserId);
   }
 
-  Future<Conversation?> getConversationById(String conversationId, String currentUserId) async {
+  Future<Conversation?> getConversationById(
+    String conversationId,
+    String currentUserId,
+  ) async {
     final row = await _fetchConversationRow(conversationId);
     if (row == null) return null;
     return _mapConversation(row, currentUserId);
@@ -712,7 +775,9 @@ class ChatService {
       senderAvatar: row['sender_avatar']?.toString() ?? '',
       content: row['content']?.toString() ?? '',
       attachmentUrls: List<String>.from(row['attachment_urls'] ?? const []),
-      timestamp: DateTime.tryParse(row['created_at']?.toString() ?? '') ?? DateTime.now(),
+      timestamp:
+          DateTime.tryParse(row['created_at']?.toString() ?? '') ??
+          DateTime.now(),
       readBy: List<String>.from(row['read_by'] ?? const []),
       isRead: row['is_read'] == true,
       seenAt: DateTime.tryParse(row['seen_at']?.toString() ?? ''),
@@ -720,40 +785,50 @@ class ChatService {
   }
 
   Conversation _mapConversation(Map<String, dynamic> row, String userId) {
-    final participantIds = List<String>.from(row['participant_ids'] ?? const []);
-    final names = Map<String, String>.from(row['participant_names'] ?? const <String, String>{});
-    final avatars = Map<String, String>.from(row['participant_avatars'] ?? const <String, String>{});
+    final participantIds = List<String>.from(
+      row['participant_ids'] ?? const [],
+    );
+    final names = Map<String, String>.from(
+      row['participant_names'] ?? const <String, String>{},
+    );
+    final avatars = Map<String, String>.from(
+      row['participant_avatars'] ?? const <String, String>{},
+    );
 
-    final namedGroup = (names[Conversation.groupNameMetaKey] ?? '').trim().isNotEmpty;
+    final namedGroup = (names[Conversation.groupNameMetaKey] ?? '')
+        .trim()
+        .isNotEmpty;
     final isGroup = namedGroup || participantIds.length > 2;
 
     final otherUserId = isGroup
-      ? ''
-      : participantIds.firstWhere(
-        (id) => id != userId,
-        orElse: () => participantIds.isNotEmpty ? participantIds.first : '',
-        );
+        ? ''
+        : participantIds.firstWhere(
+            (id) => id != userId,
+            orElse: () => participantIds.isNotEmpty ? participantIds.first : '',
+          );
 
     return Conversation(
       id: row['id']?.toString() ?? '',
       participantIds: participantIds,
       participantNames: isGroup
-        ? names
-        : (otherUserId.isEmpty
           ? names
-          : {otherUserId: names[otherUserId] ?? 'Unknown'}),
+          : (otherUserId.isEmpty
+                ? names
+                : {otherUserId: names[otherUserId] ?? 'Unknown'}),
       participantAvatars: isGroup
-        ? avatars
-        : (otherUserId.isEmpty
           ? avatars
-          : {otherUserId: avatars[otherUserId] ?? ''}),
+          : (otherUserId.isEmpty
+                ? avatars
+                : {otherUserId: avatars[otherUserId] ?? ''}),
       lastMessage: row['last_message']?.toString() ?? '',
       lastMessageTimestamp:
           DateTime.tryParse(row['last_message_timestamp']?.toString() ?? '') ??
           DateTime.now(),
       lastMessageSenderId: row['last_message_sender_id']?.toString() ?? '',
       unreadCount: (row['unread_count'] as num?)?.toInt() ?? 0,
-      createdAt: DateTime.tryParse(row['created_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(row['created_at']?.toString() ?? '') ??
+          DateTime.now(),
       projectId: row['project_id']?.toString(),
       projectTitle: row['project_title']?.toString(),
     );

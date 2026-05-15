@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../models/course_model.dart';
+import '../../../services/content_moderation_service.dart';
 import '../../../services/supabase_database_service.dart';
 import '../../../services/supabase_storage_service.dart';
 
@@ -183,9 +184,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save course: $e')),
-      );
+      final message =
+          e.toString().contains(ContentModerationService.violationMessage)
+          ? ContentModerationService.violationMessage
+          : 'Could not save course: $e';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -195,9 +200,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Course' : 'Add Course'),
-      ),
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Course' : 'Add Course')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -251,11 +254,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 items: const [
                   DropdownMenuItem(value: 'Flutter', child: Text('Flutter')),
                   DropdownMenuItem(value: 'UI/UX', child: Text('UI/UX')),
-                  DropdownMenuItem(value: 'Marketing', child: Text('Marketing')),
+                  DropdownMenuItem(
+                    value: 'Marketing',
+                    child: Text('Marketing'),
+                  ),
                   DropdownMenuItem(value: 'Design', child: Text('Design')),
                   DropdownMenuItem(value: 'Career', child: Text('Career')),
                 ],
-                onChanged: (value) => setState(() => _category = value ?? _category),
+                onChanged: (value) =>
+                    setState(() => _category = value ?? _category),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -263,7 +270,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 decoration: _decoration('Level'),
                 items: const [
                   DropdownMenuItem(value: 'Beginner', child: Text('Beginner')),
-                  DropdownMenuItem(value: 'Intermediate', child: Text('Intermediate')),
+                  DropdownMenuItem(
+                    value: 'Intermediate',
+                    child: Text('Intermediate'),
+                  ),
                 ],
                 onChanged: (value) => setState(() => _level = value ?? _level),
               ),
@@ -278,7 +288,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 title: 'Thumbnail Image',
                 subtitle: _thumbnailBytes != null
                     ? 'Selected image'
-                    : (_existingThumbnail.isNotEmpty ? 'Current thumbnail exists' : 'Tap to upload'),
+                    : (_existingThumbnail.isNotEmpty
+                          ? 'Current thumbnail exists'
+                          : 'Tap to upload'),
                 icon: Icons.image_outlined,
                 onTap: _pickThumbnail,
               ),
@@ -296,7 +308,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveCourse,
-                  child: Text(_isSaving ? 'Saving...' : (_isEditing ? 'Update Course' : 'Publish Course')),
+                  child: Text(
+                    _isSaving
+                        ? 'Saving...'
+                        : (_isEditing ? 'Update Course' : 'Publish Course'),
+                  ),
                 ),
               ),
             ],
@@ -358,8 +374,14 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  Text(subtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
                 ],
               ),
             ),

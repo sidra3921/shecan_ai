@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../constants/app_colors.dart';
@@ -9,6 +12,7 @@ import '../../../models/chat_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/ai_service.dart';
 import '../../../services/chat_service.dart';
+import '../../../services/content_moderation_service.dart';
 import '../../../services/supabase_database_service.dart';
 import '../../../services/supabase_storage_service.dart';
 
@@ -44,6 +48,8 @@ class ChatDetailScreen extends StatefulWidget {
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _controller = TextEditingController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final FlutterTts _tts = FlutterTts();
   bool _isSending = false;
   final _chatService = ChatService();
   final _dbService = SupabaseDatabaseService();
@@ -52,6 +58,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final List<_PendingMessage> _pendingMessages = [];
   bool _isOtherTyping = false;
   bool _isAiResponding = false;
+  bool _isListening = false;
+  bool _speechAvailable = false;
+  bool _ttsEnabled = true;
+  bool _ttsReady = false;
+  bool _autoSendVoice = true;
+  String _speechStatusNote = '';
+  String _speechErrorNote = '';
+  String? _speechLocaleId;
   DateTime? _lastReadSyncAt;
   String? _otherUserId;
   Conversation? _conversation;
@@ -76,6 +90,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void initState() {
     super.initState();
     _conversation = widget.conversation;
+    _ttsEnabled = widget.isAI;
     if (!widget.isAI &&
         widget.conversation != null &&
         widget.currentUserId != null) {
@@ -117,12 +132,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
 
     _controller.addListener(_onInputChanged);
+    _initSpeech();
+    _initTts();
   }
 
   @override
   void dispose() {
     _controller.removeListener(_onInputChanged);
     _typingSubscription?.cancel();
+    _speech.stop();
+    _tts.stop();
     if (!widget.isAI && widget.currentUserId != null) {
       _chatService.setPresence(userId: widget.currentUserId!, isOnline: false);
       final c = _activeConversation;
@@ -136,6 +155,153 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    if (!widget.isAI) return;
+    final available = await _speech.initialize(
+      onStatus: _handleSpeechStatus,
+      onError: _handleSpeechError,
+    );
+    if (!mounted) return;
+    setState(() {
+      _speechAvailable = available;
+      _speechStatusNote = available
+          ? 'Speech ready'
+          : 'Speech unavailable on this browser';
+      _speechErrorNote = '';
+    });
+    if (available) {
+      final locale = await _speech.systemLocale();
+      if (!mounted) return;
+      _speechLocaleId = locale?.localeId;
+    }
+  }
+
+  Future<bool> _ensureSpeechReady() async {
+    if (_speechAvailable) return true;
+    final available = await _speech.initialize(
+      onStatus: _handleSpeechStatus,
+      onError: _handleSpeechError,
+    );
+    if (!mounted) return false;
+    setState(() {
+      _speechAvailable = available;
+      _speechStatusNote = available
+          ? 'Speech ready'
+          : 'Speech unavailable on this browser';
+      _speechErrorNote = '';
+    });
+    if (available) {
+      final locale = await _speech.systemLocale();
+      if (!mounted) return false;
+      _speechLocaleId = locale?.localeId;
+    }
+    return available;
+  }
+
+  Future<void> _initTts() async {
+    if (!widget.isAI) return;
+    await _tts.awaitSpeakCompletion(true);
+    await _tts.setSpeechRate(0.45);
+    await _tts.setPitch(1.0);
+    await _tts.setVolume(1.0);
+    if (!mounted) return;
+    setState(() => _ttsReady = true);
+  }
+
+  void _handleSpeechStatus(String status) {
+    if (!mounted) return;
+    if (status == 'notListening' || status == 'done') {
+      setState(() => _isListening = false);
+    }
+    setState(() => _speechStatusNote = 'Speech status: $status');
+  }
+
+  void _handleSpeechError(dynamic error) {
+    if (!mounted) return;
+    setState(() => _isListening = false);
+    setState(() => _speechErrorNote = error.toString());
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Speech recognition error: ${error.toString()}')),
+    );
+  }
+
+  Future<void> _toggleListening() async {
+    if (!await _ensureSpeechReady()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Speech recognition unavailable. Check microphone permission.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (_isListening) {
+      await _speech.stop();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      return;
+    }
+
+    final started = await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() {
+          _controller.text = result.recognizedWords;
+          _controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: _controller.text.length),
+          );
+          if (result.finalResult) {
+            _isListening = false;
+            _speechStatusNote = 'Speech final result received';
+          }
+        });
+        if (result.finalResult &&
+            _autoSendVoice &&
+            !_isAiResponding &&
+            _controller.text.trim().isNotEmpty) {
+          Future<void>.delayed(Duration.zero, sendMessage);
+        }
+      },
+      listenMode: stt.ListenMode.dictation,
+      localeId: _speechLocaleId,
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 3),
+      partialResults: true,
+      cancelOnError: true,
+    );
+
+    if (!mounted) return;
+    setState(() => _isListening = started);
+    if (!started) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not start listening. Check microphone permissions.',
+          ),
+        ),
+      );
+      setState(() => _speechStatusNote = 'Speech listen failed to start');
+    } else {
+      setState(() => _speechStatusNote = 'Listening...');
+    }
+  }
+
+  void _toggleTts() {
+    setState(() => _ttsEnabled = !_ttsEnabled);
+    if (!_ttsEnabled) {
+      _tts.stop();
+    }
+  }
+
+  Future<void> _speak(String text) async {
+    if (!widget.isAI || !_ttsEnabled || !_ttsReady) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    await _tts.stop();
+    await _tts.speak(trimmed);
   }
 
   void _onInputChanged() {
@@ -476,6 +642,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (_controller.text.isEmpty) return;
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    if (_isListening) {
+      await _speech.stop();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+    }
+    try {
+      ContentModerationService().validateText(text);
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(ContentModerationService.violationMessage),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
     if (widget.isAI) {
       final historyBeforeSend = messages
@@ -498,17 +680,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         _controller.clear();
       });
 
-      final assistantText = await _aiService.generateAssistantReply(
-        userId: widget.currentUserId ?? 'guest',
-        userMessage: text,
-        history: historyBeforeSend,
-      );
+      try {
+        final assistantText = await _aiService.generateAssistantReply(
+          userId: widget.currentUserId ?? 'guest',
+          userMessage: text,
+          history: historyBeforeSend,
+        );
 
-      await for (final partial in _aiService.streamTextDraft(assistantText)) {
+        await for (final partial in _aiService.streamTextDraft(assistantText)) {
+          if (!mounted) return;
+          setState(() {
+            messages[messages.length - 1] = {"role": "bot", "text": partial};
+          });
+        }
+        await _speak(assistantText);
+      } catch (e) {
         if (!mounted) return;
         setState(() {
-          messages[messages.length - 1] = {"role": "bot", "text": partial};
+          messages.removeLast();
+          _controller.text = text;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(ContentModerationService.violationMessage),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
 
       if (!mounted) return;
@@ -560,11 +757,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           TextPosition(offset: _controller.text.length),
         );
       });
+      final message =
+          e.toString().contains(ContentModerationService.violationMessage)
+          ? ContentModerationService.violationMessage
+          : 'Failed to send message: $e';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to send message: $e'),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(message), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isSending = false);
@@ -613,6 +811,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 },
               ),
         actions: [
+          if (widget.isAI)
+            IconButton(
+              onPressed: _toggleTts,
+              icon: Icon(
+                _ttsEnabled
+                    ? Icons.volume_up_outlined
+                    : Icons.volume_off_outlined,
+              ),
+              tooltip: _ttsEnabled ? 'Voice replies on' : 'Voice replies off',
+            ),
           if (_isGroupChat)
             IconButton(
               onPressed: _openGroupActions,
@@ -637,6 +845,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       return _messageBubble(
                         isUser: isUser,
                         text: msg["text"] ?? '',
+                        isMarkdown: widget.isAI && !isUser,
                       );
                     },
                   )
@@ -788,32 +997,75 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.white,
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: "Type a message...",
-                      border: InputBorder.none,
+                if (widget.isAI &&
+                    (_speechStatusNote.isNotEmpty ||
+                        _speechErrorNote.isNotEmpty))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _speechErrorNote.isNotEmpty
+                                ? 'Speech error: $_speechErrorNote'
+                                : _speechStatusNote,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _speechErrorNote.isNotEmpty
+                                  ? AppColors.error
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    onSubmitted: (_) {
-                      if (!_isSending) {
-                        sendMessage();
-                      }
-                    },
                   ),
-                ),
+                Row(
+                  children: [
+                    if (widget.isAI)
+                      IconButton(
+                        onPressed: _isAiResponding ? null : _toggleListening,
+                        icon: Icon(
+                          _isListening ? Icons.mic : Icons.mic_none,
+                          color: _isListening
+                              ? AppColors.error
+                              : AppColors.primary,
+                        ),
+                        tooltip: _isListening
+                            ? 'Stop listening'
+                            : 'Speak message',
+                      ),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          hintText: _isListening
+                              ? 'Listening...'
+                              : 'Type a message...',
+                          border: InputBorder.none,
+                        ),
+                        onSubmitted: (_) {
+                          if (!_isSending) {
+                            sendMessage();
+                          }
+                        },
+                      ),
+                    ),
 
-                IconButton(
-                  onPressed: _isSending ? null : sendMessage,
-                  icon: _isSending
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send, color: AppColors.primary),
+                    IconButton(
+                      onPressed: _isSending ? null : sendMessage,
+                      icon: _isSending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send, color: AppColors.primary),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -828,7 +1080,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     required String text,
     bool isPending = false,
     bool showSeen = false,
+    bool isMarkdown = false,
   }) {
+    final textColor = isUser ? Colors.white : Colors.black;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -844,10 +1098,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
-            Text(
-              text,
-              style: TextStyle(color: isUser ? Colors.white : Colors.black),
-            ),
+            if (isMarkdown)
+              MarkdownBody(
+                data: text,
+                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                    .copyWith(
+                      p: TextStyle(color: textColor),
+                      listBullet: TextStyle(color: textColor),
+                      strong: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                softLineBreak: true,
+              )
+            else
+              Text(text, style: TextStyle(color: textColor)),
             if (isPending)
               Padding(
                 padding: const EdgeInsets.only(top: 4),

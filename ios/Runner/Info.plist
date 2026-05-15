@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Allow microphone access to dictate messages.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Allow speech recognition to convert your voice into text.</string>
 </dict>
 </plist>

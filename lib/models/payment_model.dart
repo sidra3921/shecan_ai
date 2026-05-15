@@ -43,6 +43,7 @@ class PaymentModel {
 
   Map<String, dynamic> toMap() {
     final payload = <String, dynamic>{
+      'user_id': fromUserId,
       'from_user_id': fromUserId,
       'to_user_id': toUserId,
       'amount': amount,

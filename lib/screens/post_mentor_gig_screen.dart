@@ -3,6 +3,8 @@ import 'package:get_it/get_it.dart';
 
 import '../constants/app_colors.dart';
 import '../models/mentor_gig_model.dart';
+import '../services/ai_service.dart';
+import '../services/content_moderation_service.dart';
 import '../services/recommendation_service.dart';
 import '../services/supabase_auth_service.dart';
 
@@ -43,29 +45,38 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
     });
 
     try {
-      final recommendationService = GetIt.I<RecommendationService>();
-      final draft = recommendationService.generateMentorGigDraft(
-        niche: _nicheController.text.trim(),
-        selectedSkills: _selectedSkills,
+      final ai = GetIt.I<AIService>();
+      final draft = await ai.generateGigDraft(
+        prompt: _nicheController.text.trim(),
       );
+
+      final skills =
+          (draft['skills'] as List?)?.map((e) => e.toString()).toList() ??
+          const <String>[];
 
       if (!mounted) return;
       setState(() {
-        _titleController.text = draft.title;
-        _descriptionController.text = draft.description;
-        if (_selectedSkills.isEmpty) {
-          _selectedSkills.addAll(draft.suggestedSkills);
+        _titleController.text = (draft['title'] ?? '').toString();
+        _descriptionController.text = (draft['description'] ?? '').toString();
+        if (_selectedSkills.isEmpty && skills.isNotEmpty) {
+          _selectedSkills.addAll(skills);
         }
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI draft generated. Review and publish.')),
+        const SnackBar(
+          content: Text('AI draft generated. Review and publish.'),
+        ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to generate AI draft')),
-      );
+      final message =
+          e.toString().contains(ContentModerationService.violationMessage)
+          ? ContentModerationService.gigViolationMessage
+          : 'AI draft failed: $e';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -84,12 +95,27 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
       return;
     }
 
+    try {
+      ContentModerationService().validateGigFields(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        skills: _selectedSkills,
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(ContentModerationService.gigViolationMessage),
+        ),
+      );
+      return;
+    }
+
     final authService = GetIt.I<SupabaseAuthService>();
     final userId = authService.currentUserId;
     if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in again')), 
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please sign in again')));
       return;
     }
 
@@ -112,7 +138,7 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mentor gig published successfully')), 
+        const SnackBar(content: Text('Mentor gig published successfully')),
       );
       _titleController.clear();
       _descriptionController.clear();
@@ -123,9 +149,13 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to publish gig: $e')),
-      );
+      final message =
+          e.toString().contains(ContentModerationService.violationMessage)
+          ? ContentModerationService.gigViolationMessage
+          : 'Failed to publish gig: $e';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -148,9 +178,7 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Create Mentor Gig'),
-      ),
+      appBar: AppBar(title: const Text('Create Mentor Gig')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Card(
@@ -184,32 +212,51 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _isGenerating ? null : _generateWithAI,
                       icon: const Icon(Icons.auto_awesome),
-                      label: Text(_isGenerating ? 'Generating...' : 'Generate Gig Draft with AI'),
+                      label: Text(
+                        _isGenerating
+                            ? 'Generating...'
+                            : 'Generate Gig Draft with AI',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Gig Title', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Gig Title',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(hintText: 'Enter gig title'),
-                    validator: (value) => (value == null || value.trim().isEmpty)
+                    decoration: const InputDecoration(
+                      hintText: 'Enter gig title',
+                    ),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
                         ? 'Please enter gig title'
                         : null,
                   ),
                   const SizedBox(height: 16),
-                  const Text('Description', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Description',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _descriptionController,
                     maxLines: 4,
-                    decoration: const InputDecoration(hintText: 'Describe what you offer'),
-                    validator: (value) => (value == null || value.trim().isEmpty)
+                    decoration: const InputDecoration(
+                      hintText: 'Describe what you offer',
+                    ),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
                         ? 'Please enter description'
                         : null,
                   ),
                   const SizedBox(height: 16),
-                  const Text('Hourly Rate (PKR)', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Hourly Rate (PKR)',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _hourlyRateController,
@@ -224,7 +271,10 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  const Text('Skills', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Skills',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -251,7 +301,9 @@ class _PostMentorGigScreenState extends State<PostMentorGigScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _publishGig,
-                      child: Text(_isSaving ? 'Publishing...' : 'Publish Mentor Gig'),
+                      child: Text(
+                        _isSaving ? 'Publishing...' : 'Publish Mentor Gig',
+                      ),
                     ),
                   ),
                 ],

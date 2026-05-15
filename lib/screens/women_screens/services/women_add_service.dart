@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import '../../../constants/app_colors.dart';
 import '../../../models/mentor_gig_model.dart';
 import '../../../services/ai_service.dart';
+import '../../../services/content_moderation_service.dart';
 import '../../../services/supabase_database_service.dart';
 import '../../../services/supabase_storage_service.dart';
 
@@ -13,11 +14,7 @@ class AddServiceScreen extends StatefulWidget {
   final String mentorId;
   final MentorGigModel? initialGig;
 
-  const AddServiceScreen({
-    super.key,
-    required this.mentorId,
-    this.initialGig,
-  });
+  const AddServiceScreen({super.key, required this.mentorId, this.initialGig});
 
   @override
   State<AddServiceScreen> createState() => _AddServiceScreenState();
@@ -48,13 +45,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   String _selectedImageExt = 'jpg';
   String _existingImageUrl = '';
 
-  final _categories = const [
-    'development',
-    'design',
-    'marketing',
-    'writing',
-    'consulting',
-  ];
+  final _categories = ContentModerationService.safeGigCategories;
 
   final _experienceLevels = const ['beginner', 'intermediate', 'expert'];
 
@@ -106,13 +97,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
     final packages = raw.isEmpty
         ? fallback
-        : raw
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
+        : raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
     Map<String, dynamic> byName(String name, int index) {
-      final found = packages.where((p) =>
-          p['name']?.toString().toLowerCase() == name.toLowerCase());
+      final found = packages.where(
+        (p) => p['name']?.toString().toLowerCase() == name.toLowerCase(),
+      );
       if (found.isNotEmpty) return found.first;
       if (index < packages.length) return packages[index];
       return fallback[index];
@@ -161,7 +151,10 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   Future<void> _pickImage() async {
     try {
       final picker = ImagePicker();
-      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
       if (picked == null) return;
 
       final bytes = await picked.readAsBytes();
@@ -174,9 +167,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not pick image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not pick image: $e')));
     }
   }
 
@@ -193,7 +186,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a prompt first for AI generation.')),
+        const SnackBar(
+          content: Text('Enter a prompt first for AI generation.'),
+        ),
       );
       return;
     }
@@ -203,22 +198,22 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       final ai = AIService();
       final draft = await ai.generateGigDraft(
         prompt: prompt,
-        preferredCategory: _category,
+        preferredCategory: null,
         preferredExperienceLevel: _experienceLevel,
       );
 
-      if (_titleController.text.trim().isEmpty) {
-        _titleController.text = (draft['title'] ?? '').toString();
+      _category = (draft['category'] ?? _category).toString().toLowerCase();
+      if (!_categories.contains(_category)) {
+        _category = 'consulting';
       }
-
-      _category = (draft['category'] ?? _category).toString();
-      _experienceLevel = (draft['experienceLevel'] ?? _experienceLevel).toString();
+      _experienceLevel = (draft['experienceLevel'] ?? _experienceLevel)
+          .toString();
+      _titleController.text = (draft['title'] ?? '').toString();
       _priceController.text = (draft['hourlyRate'] ?? 0).toString();
       _applyPackages((draft['packages'] as List?) ?? const []);
 
-      final skills = (draft['skills'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
+      final skills =
+          (draft['skills'] as List?)?.map((e) => e.toString()).toList() ??
           const <String>[];
       if (skills.isNotEmpty) {
         _skillsController.text = skills.join(', ');
@@ -234,9 +229,13 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      final message =
+          e.toString().contains(ContentModerationService.violationMessage)
+          ? ContentModerationService.gigViolationMessage
+          : 'AI generation failed: $e';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('AI generation failed: $e')));
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
@@ -248,6 +247,24 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     final hourlyRate = double.tryParse(_priceController.text.trim()) ?? 0;
     final skills = _parseSkills(_skillsController.text);
     final packages = _collectPackages();
+
+    try {
+      ContentModerationService().validateGigFields(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        skills: skills,
+        category: _category,
+        experienceLevel: _experienceLevel,
+        packages: packages,
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(ContentModerationService.gigViolationMessage),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
@@ -308,14 +325,22 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEditing ? 'Service updated successfully' : 'Service created successfully'),
+          content: Text(
+            _isEditing
+                ? 'Service updated successfully'
+                : 'Service created successfully',
+          ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
+      final message =
+          e.toString().contains(ContentModerationService.violationMessage)
+          ? ContentModerationService.gigViolationMessage
+          : 'Failed to save service: $e';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save service: $e')));
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -325,9 +350,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Service' : 'Add Service'),
-      ),
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Service' : 'Add Service')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -359,7 +382,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.auto_awesome),
-                  label: Text(_isGenerating ? 'Generating...' : 'Generate with AI'),
+                  label: Text(
+                    _isGenerating ? 'Generating...' : 'Generate with AI',
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -417,15 +442,17 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               _field(
                 controller: _titleController,
                 hint: 'Title',
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Title is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Title is required'
+                    : null,
               ),
               _field(
                 controller: _descriptionController,
                 hint: 'Description',
                 maxLines: 5,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Description is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Description is required'
+                    : null,
               ),
               _field(
                 controller: _skillsController,
@@ -438,10 +465,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       initialValue: _category,
                       items: _categories
                           .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(c),
-                            ),
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
                           )
                           .toList(),
                       onChanged: (v) {
@@ -464,10 +488,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       initialValue: _experienceLevel,
                       items: _experienceLevels
                           .map(
-                            (e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(e),
-                            ),
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
                           )
                           .toList(),
                       onChanged: (v) {
@@ -504,16 +525,28 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        _applyPackages(
-                          AIService().generateGigPackages(
-                            prompt: _promptController.text,
-                            category: _category,
-                            hourlyRate:
-                                double.tryParse(_priceController.text.trim()) ?? 2500,
-                          ),
-                        );
-                        setState(() {});
+                      onPressed: () async {
+                        try {
+                          final packages = await AIService()
+                              .generateGigPackagesWithAI(
+                                prompt: _promptController.text,
+                                category: _category,
+                                hourlyRate:
+                                    double.tryParse(
+                                      _priceController.text.trim(),
+                                    ) ??
+                                    2500,
+                              );
+                          _applyPackages(packages);
+                          if (mounted) setState(() {});
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('AI package generation failed: $e'),
+                            ),
+                          );
+                        }
                       },
                       icon: const Icon(Icons.auto_awesome),
                       label: const Text('Generate Packages'),

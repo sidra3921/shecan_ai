@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../constants/app_colors.dart';
 import '../models/user_model.dart';
+import '../services/content_moderation_service.dart';
 import '../services/supabase_auth_service.dart';
 import '../services/supabase_database_service.dart';
 import '../services/supabase_storage_service.dart';
@@ -193,11 +194,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) {
         return;
       }
+      final message =
+          e.toString().contains(ContentModerationService.violationMessage)
+          ? ContentModerationService.violationMessage
+          : 'Failed to save profile: $e';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save profile: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {

@@ -12,6 +12,7 @@ import '../models/order_event_model.dart';
 import '../models/course_model.dart';
 import '../models/course_enrollment_model.dart';
 import '../models/enrolled_course_item_model.dart';
+import 'content_moderation_service.dart';
 
 class SupabaseDatabaseService {
   static final SupabaseDatabaseService _instance =
@@ -220,6 +221,7 @@ class SupabaseDatabaseService {
   Future<void> _upsertUserWithPrunedColumns(
     Map<String, dynamic> payload,
   ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 12; i++) {
@@ -242,6 +244,7 @@ class SupabaseDatabaseService {
     String userId,
     Map<String, dynamic> payload,
   ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 12; i++) {
@@ -277,6 +280,7 @@ class SupabaseDatabaseService {
     String table,
     Map<String, dynamic> payload,
   ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 16; i++) {
@@ -304,6 +308,7 @@ class SupabaseDatabaseService {
     String id,
     Map<String, dynamic> payload,
   ) async {
+    ContentModerationService().validatePayload(payload);
     final working = Map<String, dynamic>.from(payload);
 
     for (var i = 0; i < 16; i++) {
@@ -430,6 +435,14 @@ class SupabaseDatabaseService {
   // ==================== MENTOR GIG OPERATIONS ====================
 
   Future<String> createMentorGig(MentorGigModel gig) async {
+    ContentModerationService().validateGigFields(
+      title: gig.title,
+      description: gig.description,
+      skills: gig.skills,
+      category: gig.category,
+      experienceLevel: gig.experienceLevel,
+      packages: gig.packages,
+    );
     final response = await _insertWithPrunedColumns('mentor_gigs', gig.toMap());
     return response['id'] as String;
   }
@@ -438,6 +451,28 @@ class SupabaseDatabaseService {
     String gigId,
     Map<String, dynamic> updates,
   ) async {
+    final rawSkills = updates['skills'];
+    final rawPackages = updates['packages'] ?? updates['package_tiers'];
+    final skills = rawSkills is List
+        ? rawSkills.map((item) => item.toString()).toList()
+        : null;
+    final packages = rawPackages is List
+        ? rawPackages
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList()
+        : null;
+
+    ContentModerationService().validateGigFields(
+      title: updates['title']?.toString(),
+      description: updates['description']?.toString(),
+      skills: skills,
+      category: updates['category']?.toString(),
+      experienceLevel:
+          (updates['experience_level'] ?? updates['experienceLevel'])
+              ?.toString(),
+      packages: packages,
+    );
+
     final payload = <String, dynamic>{
       ...updates,
       'updated_at': DateTime.now().toIso8601String(),
@@ -735,6 +770,7 @@ class SupabaseDatabaseService {
 
   /// Create new project
   Future<String> createProject(ProjectModel project) async {
+    ContentModerationService().validatePayload(project.toMap());
     final response = await _insertProjectWithPrunedColumns(project.toMap());
     return response['id'] as String;
   }
@@ -994,6 +1030,7 @@ class SupabaseDatabaseService {
   // ==================== COURSE OPERATIONS ====================
 
   Future<String> createCourse(CourseModel course) async {
+    ContentModerationService().validatePayload(course.toMap());
     final response = await _insertWithPrunedColumns('courses', course.toMap());
     return response['id'] as String;
   }
@@ -1195,6 +1232,7 @@ class SupabaseDatabaseService {
 
   /// Send message
   Future<String> sendMessage(MessageModel message) async {
+    ContentModerationService().validateText(message.text);
     final response = await _insertWithPrunedColumns(
       'messages',
       message.toMap(),

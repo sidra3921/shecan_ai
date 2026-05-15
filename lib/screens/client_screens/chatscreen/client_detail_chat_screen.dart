@@ -223,9 +223,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     setState(() => _isListening = false);
     setState(() => _speechErrorNote = error.toString());
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Speech recognition error: ${error.toString()}'),
-      ),
+      SnackBar(content: Text('Speech recognition error: ${error.toString()}')),
     );
   }
 
@@ -1115,10 +1113,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 softLineBreak: true,
               )
             else
-              Text(
-                text,
-                style: TextStyle(color: textColor),
-              ),
+              Text(text, style: TextStyle(color: textColor)),
             if (isPending)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
